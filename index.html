@@ -158,7 +158,13 @@
         <div id="wp-panel-photo" class="wp-panel hidden" role="tabpanel">
           <!-- Preview of the current photo (shown once one is chosen) -->
           <div id="wp-photo-preview" class="wp-photo-preview hidden">
-            <img id="wp-preview-img" class="wp-preview-img" alt="Your chosen background" />
+            <!-- Tapping the image opens the position/zoom editor -->
+            <div id="btn-wp-adjust-photo" class="wp-preview-tap-target" role="button" tabindex="0" aria-label="Tap to adjust photo position and zoom">
+              <img id="wp-preview-img" class="wp-preview-img" alt="Your chosen background" />
+              <div class="wp-preview-adjust-hint">
+                <span>⤢ Tap to adjust</span>
+              </div>
+            </div>
             <button type="button" id="btn-wp-remove-photo" class="wp-remove-photo-btn">✕ Remove</button>
           </div>
 
@@ -224,6 +230,37 @@
       <p id="milestone-message" class="milestone-message"></p>
       <button id="btn-close-milestone" class="primary-btn milestone-close-btn">Brilliant ✓</button>
     </div>
+  </div>
+
+  <!-- ═══════════════════════════════════════════════
+       OVERLAY: Photo position & zoom editor
+       Full-screen editor that appears when the user
+       taps the photo preview in the form.
+       Drag to reposition, pinch to zoom.
+  ═══════════════════════════════════════════════ -->
+  <div id="photo-editor-overlay" class="photo-editor-overlay hidden" role="dialog" aria-modal="true" aria-label="Adjust photo position">
+
+    <div class="photo-editor-header">
+      <button type="button" id="btn-photo-editor-cancel" class="photo-editor-btn">Cancel</button>
+      <span class="photo-editor-title">Adjust Photo</span>
+      <button type="button" id="btn-photo-editor-done" class="photo-editor-btn photo-editor-btn--done">Done</button>
+    </div>
+
+    <!-- The viewport — clips the image to phone-screen proportions -->
+    <div class="photo-editor-viewport" id="photo-editor-viewport">
+      <!-- Grid overlay to help with positioning -->
+      <div class="photo-editor-grid" aria-hidden="true">
+        <div class="photo-editor-grid-line photo-editor-grid-line--v1"></div>
+        <div class="photo-editor-grid-line photo-editor-grid-line--v2"></div>
+        <div class="photo-editor-grid-line photo-editor-grid-line--h1"></div>
+        <div class="photo-editor-grid-line photo-editor-grid-line--h2"></div>
+      </div>
+      <!-- The image being positioned — transform applied by JS -->
+      <img id="photo-editor-img" class="photo-editor-img" alt="" draggable="false" />
+    </div>
+
+    <p class="photo-editor-hint">Drag to reposition · Pinch to zoom</p>
+
   </div>
 
   <script src="app.js"></script>

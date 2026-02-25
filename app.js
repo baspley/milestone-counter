@@ -541,6 +541,49 @@ function renderTimerList() {
  * Loads the photo from IndexedDB if needed.
  * @param {object} timer
  */
+/**
+ * Render a photo with a position/zoom transform onto a canvas and return
+ * a data URL. Used to apply the user's crop to the detail screen wallpaper.
+ *
+ * We render at the device's screen size (window.innerWidth x window.innerHeight)
+ * so the result looks sharp on any iPhone.
+ *
+ * @param {string} dataUrl - original photo
+ * @param {{ x: number, y: number, scale: number }} transform
+ * @returns {Promise<string>} - data URL of the cropped image
+ */
+async function applyTransformToCanvas(dataUrl, transform) {
+  return new Promise((resolve) => {
+    const img = new Image();
+    img.onload = () => {
+      const vw = window.innerWidth;
+      const vh = window.innerHeight;
+
+      const canvas = document.createElement('canvas');
+      canvas.width  = vw;
+      canvas.height = vh;
+      const ctx = canvas.getContext('2d');
+
+      const scaledW = img.naturalWidth  * transform.scale;
+      const scaledH = img.naturalHeight * transform.scale;
+
+      // Image centre in screen space (viewport centre + user offset)
+      const imgCentreX = vw / 2 + transform.x;
+      const imgCentreY = vh / 2 + transform.y;
+
+      // Top-left of scaled image
+      const imgLeft = imgCentreX - scaledW / 2;
+      const imgTop  = imgCentreY - scaledH / 2;
+
+      ctx.drawImage(img, imgLeft, imgTop, scaledW, scaledH);
+
+      resolve(canvas.toDataURL('image/jpeg', 0.92));
+    };
+    img.onerror = () => resolve(dataUrl); // fallback to original if anything fails
+    img.src = dataUrl;
+  });
+}
+
 async function applyDetailWallpaper(timer) {
   const wallpaperEl = document.getElementById('detail-wallpaper');
   const screenEl    = document.getElementById('screen-detail');
@@ -560,7 +603,14 @@ async function applyDetailWallpaper(timer) {
     // Only open IndexedDB when we actually need a photo
     const dataUrl = await loadPhoto(timer.id);
     if (dataUrl) {
-      css = `url('${dataUrl}') center / cover no-repeat`;
+      // If we have a position/zoom transform, render it to a canvas first
+      // so the wallpaper respects the user's crop.
+      if (timer.photoTransform) {
+        const croppedUrl = await applyTransformToCanvas(dataUrl, timer.photoTransform);
+        css = `url('${croppedUrl}') center / cover no-repeat`;
+      } else {
+        css = `url('${dataUrl}') center / cover no-repeat`;
+      }
     }
   } else {
     // Built-in CSS theme — no async work needed
@@ -704,6 +754,13 @@ let formWallpaperSelection = 'none';
  */
 let formPendingPhotoBlob = null;
 
+/**
+ * The position/zoom transform the user set in the photo editor.
+ * Saved alongside the timer metadata in localStorage.
+ * @type {{ x: number, y: number, scale: number }|null}
+ */
+let formPendingPhotoTransform = null;
+
 function openFormScreen(timerId = null) {
   editingTimerId = timerId;
   const isEditing = timerId !== null;
@@ -723,8 +780,9 @@ function openFormScreen(timerId = null) {
   document.getElementById('btn-form-delete').classList.toggle('hidden', !isEditing);
 
   // Wallpaper state
-  formWallpaperSelection = timer ? (timer.wallpaper || 'none') : 'none';
-  formPendingPhotoBlob   = null;
+  formWallpaperSelection    = timer ? (timer.wallpaper || 'none') : 'none';
+  formPendingPhotoBlob      = null;
+  formPendingPhotoTransform = timer ? (timer.photoTransform || null) : null;
 
   buildWallpaperPicker(timer);
   showScreen('form');
@@ -740,7 +798,7 @@ async function buildWallpaperPicker(timer) {
   // Restore photo preview if this timer already has a photo
   if (timer && timer.wallpaper === 'photo') {
     const dataUrl = await loadPhoto(timer.id);
-    if (dataUrl) showPhotoPreview(dataUrl);
+    if (dataUrl) showPhotoPreview(dataUrl, timer.photoTransform || null);
     else         hidePhotoPreview();
   } else {
     hidePhotoPreview();
@@ -814,14 +872,20 @@ function switchWallpaperTab(tabName) {
  * Show the photo preview in the form (once a photo is chosen or already set).
  * @param {string} dataUrl
  */
-function showPhotoPreview(dataUrl) {
+function showPhotoPreview(dataUrl, transform = null) {
   const previewEl = document.getElementById('wp-photo-preview');
-  const imgEl     = document.getElementById('wp-preview-img');
   const uploadEl  = document.getElementById('wp-upload-label');
 
-  imgEl.src = dataUrl;
   previewEl.classList.remove('hidden');
   uploadEl.classList.add('hidden');
+
+  if (transform) {
+    // Show a cropped thumbnail reflecting the saved transform
+    updatePhotoPreviewThumbnail(dataUrl, transform);
+  } else {
+    const imgEl = document.getElementById('wp-preview-img');
+    imgEl.src = dataUrl;
+  }
 }
 
 function hidePhotoPreview() {
@@ -929,6 +993,7 @@ async function handleFormSubmit(event) {
       appState.timers[index] = {
         ...existing,
         ...values,
+        photoTransform:  values.wallpaper === 'photo' ? (formPendingPhotoTransform || existing.photoTransform || null) : null,
         shownMilestones: dateChanged ? [] : existing.shownMilestones,
       };
     }
@@ -940,6 +1005,7 @@ async function handleFormSubmit(event) {
       date:             values.date,
       mode:             values.mode,
       wallpaper:        values.wallpaper,
+      photoTransform:   values.wallpaper === 'photo' ? formPendingPhotoTransform : null,
       milestoneKeys:    values.milestoneKeys,
       customMilestones: values.customMilestones,
       shownMilestones:  [],
@@ -977,8 +1043,329 @@ async function deleteTimer() {
 }
 
 
+
 /* ════════════════════════════════════════════════════
-   11. THEME (light/dark)
+   11. PHOTO POSITION & ZOOM EDITOR
+
+   When the user taps the photo preview, a full-screen
+   editor opens. They can drag to reposition and pinch
+   to zoom. The result is stored as a transform object:
+     { x: number, y: number, scale: number }
+   where x/y are pixel offsets from the image centre
+   and scale is a multiplier (1.0 = fit-to-viewport).
+
+   We store this transform in the timer's metadata in
+   localStorage so it persists across sessions.
+
+   Architecture:
+    - editorState holds all mutable editor variables
+    - openPhotoEditor() sets up the image and restores
+      any previously saved transform
+    - Pointer events handle both mouse (desktop) and
+      touch (iPhone) via the unified PointerEvent API
+    - Pinch zoom uses the distance between two active
+      pointer points
+    - constrainTransform() keeps the image covering the
+      viewport at all times (no empty edges showing)
+    - donePhotoEditor() saves the transform and renders
+      a preview thumbnail using an off-screen canvas
+════════════════════════════════════════════════════ */
+
+/**
+ * All mutable state for the photo editor.
+ * Kept in one object so it's easy to reset on open/close.
+ */
+let editorState = {
+  // The full-resolution image data URL (from IndexedDB or new file)
+  dataUrl:      null,
+  // Current transform values
+  x:            0,      // horizontal offset in px (from centre)
+  y:            0,      // vertical offset in px (from centre)
+  scale:        1.0,    // zoom multiplier
+  // Minimum scale: computed on open so image always covers viewport
+  minScale:     1.0,
+  // Pointer tracking for drag and pinch
+  isDragging:   false,
+  lastX:        0,
+  lastY:        0,
+  // Pinch tracking: store both pointer positions by ID
+  pointers:     {},     // { pointerId: { x, y } }
+  lastPinchDist: null,  // distance between two fingers at last event
+};
+
+/**
+ * Open the photo editor overlay for the current photo.
+ * Loads the image, restores any saved transform, then shows the overlay.
+ * @param {string} dataUrl - full-res photo data URL
+ * @param {{ x:number, y:number, scale:number }|null} savedTransform
+ */
+function openPhotoEditor(dataUrl, savedTransform) {
+  const overlay  = document.getElementById('photo-editor-overlay');
+  const imgEl    = document.getElementById('photo-editor-img');
+
+  // Reset editor state
+  editorState.dataUrl       = dataUrl;
+  editorState.x             = savedTransform ? savedTransform.x     : 0;
+  editorState.y             = savedTransform ? savedTransform.y     : 0;
+  editorState.scale         = savedTransform ? savedTransform.scale : 1.0;
+  editorState.isDragging    = false;
+  editorState.pointers      = {};
+  editorState.lastPinchDist = null;
+
+  // Set the image source; once loaded we can compute the min scale
+  imgEl.src = dataUrl;
+  imgEl.onload = () => {
+    computeMinScale();
+    // If no saved transform, fit the image to cover the viewport by default
+    if (!savedTransform) {
+      editorState.scale = editorState.minScale;
+      editorState.x = 0;
+      editorState.y = 0;
+    } else {
+      // Clamp saved scale in case the viewport size changed (e.g. rotated phone)
+      editorState.scale = Math.max(editorState.scale, editorState.minScale);
+    }
+    applyEditorTransform();
+  };
+
+  overlay.classList.remove('hidden');
+}
+
+/**
+ * Compute the minimum scale so the image always covers the entire viewport.
+ * We want cover behaviour (like background-size: cover), so we take the
+ * larger of the two ratios (width and height).
+ */
+function computeMinScale() {
+  const viewport = document.getElementById('photo-editor-viewport');
+  const imgEl    = document.getElementById('photo-editor-img');
+
+  const vw = viewport.clientWidth;
+  const vh = viewport.clientHeight;
+  const iw = imgEl.naturalWidth;
+  const ih = imgEl.naturalHeight;
+
+  if (!iw || !ih) return;
+
+  // Scale needed to cover the viewport in each dimension
+  const scaleW = vw / iw;
+  const scaleH = vh / ih;
+
+  // Cover = fill viewport completely, so take the larger scale
+  editorState.minScale = Math.max(scaleW, scaleH);
+}
+
+/**
+ * Apply the current editorState transform to the image element.
+ * Uses CSS transform for smooth, GPU-accelerated movement.
+ */
+function applyEditorTransform() {
+  const imgEl   = document.getElementById('photo-editor-img');
+  const { x, y, scale } = editorState;
+
+  // The image is positioned at top:50% left:50% (its centre is at the viewport centre)
+  // We then apply a translate to move it, and a scale to zoom.
+  // translate(-50%,-50%) centres the image, then our x/y offsets move it.
+  imgEl.style.transform = `translate(calc(-50% + ${x}px), calc(-50% + ${y}px)) scale(${scale})`;
+}
+
+/**
+ * Constrain the transform so the image always covers the viewport.
+ * Called after every drag or zoom gesture.
+ */
+function constrainTransform() {
+  const viewport = document.getElementById('photo-editor-viewport');
+  const imgEl    = document.getElementById('photo-editor-img');
+
+  const vw = viewport.clientWidth;
+  const vh = viewport.clientHeight;
+  const iw = imgEl.naturalWidth  * editorState.scale;
+  const ih = imgEl.naturalHeight * editorState.scale;
+
+  // Maximum allowed offset: half the difference between image size and viewport size
+  // When image is smaller than viewport in a dimension, clamp to 0
+  const maxX = Math.max(0, (iw - vw) / 2);
+  const maxY = Math.max(0, (ih - vh) / 2);
+
+  editorState.x = Math.max(-maxX, Math.min(maxX, editorState.x));
+  editorState.y = Math.max(-maxY, Math.min(maxY, editorState.y));
+}
+
+/** Save the current editor transform and close the overlay. */
+function donePhotoEditor() {
+  const transform = {
+    x:     editorState.x,
+    y:     editorState.y,
+    scale: editorState.scale,
+  };
+
+  // Store the transform for use at form submit time
+  formPendingPhotoTransform = transform;
+
+  // Update the form preview thumbnail to reflect the new crop
+  updatePhotoPreviewThumbnail(editorState.dataUrl, transform);
+
+  document.getElementById('photo-editor-overlay').classList.add('hidden');
+}
+
+/** Close the editor without saving changes. */
+function cancelPhotoEditor() {
+  document.getElementById('photo-editor-overlay').classList.add('hidden');
+}
+
+/**
+ * Render a small preview thumbnail in the form that reflects the
+ * current position/zoom, so the user can see their crop before saving.
+ *
+ * We draw onto an off-screen canvas at a small size, then use that
+ * as the src of the preview image. This is purely cosmetic.
+ *
+ * @param {string} dataUrl
+ * @param {{ x: number, y: number, scale: number }} transform
+ */
+function updatePhotoPreviewThumbnail(dataUrl, transform) {
+  const previewImg = document.getElementById('wp-preview-img');
+  const viewport   = document.getElementById('photo-editor-viewport');
+
+  // Draw a small (360×180) canvas representing the crop
+  const canvas  = document.createElement('canvas');
+  const vw      = viewport.clientWidth  || 360;
+  const vh      = viewport.clientHeight || 640;
+  // Aspect ratio of the viewport
+  const aspect  = vw / vh;
+  canvas.width  = 360;
+  canvas.height = Math.round(360 / aspect);
+  const ctx     = canvas.getContext('2d');
+
+  const img = new Image();
+  img.onload = () => {
+    const scale   = transform.scale;
+    const scaledW = img.naturalWidth  * scale;
+    const scaledH = img.naturalHeight * scale;
+
+    // Destination canvas dimensions
+    const dw = canvas.width;
+    const dh = canvas.height;
+
+    // The image centre in viewport space, accounting for our x/y offset
+    const imgCentreX = vw / 2 + transform.x;
+    const imgCentreY = vh / 2 + transform.y;
+
+    // Top-left of the image in viewport space
+    const imgLeft = imgCentreX - scaledW / 2;
+    const imgTop  = imgCentreY - scaledH / 2;
+
+    // Scale factor from viewport to canvas
+    const canvasScaleX = dw / vw;
+    const canvasScaleY = dh / vh;
+
+    ctx.drawImage(
+      img,
+      imgLeft  * canvasScaleX,
+      imgTop   * canvasScaleY,
+      scaledW  * canvasScaleX,
+      scaledH  * canvasScaleY,
+    );
+
+    previewImg.src = canvas.toDataURL('image/jpeg', 0.85);
+  };
+  img.src = dataUrl;
+}
+
+/* ── Pointer event handlers (unified mouse + touch) ── */
+
+/**
+ * Get the distance between two pointer positions (for pinch zoom).
+ * @param {{ x:number, y:number }} p1
+ * @param {{ x:number, y:number }} p2
+ * @returns {number}
+ */
+function pointerDistance(p1, p2) {
+  const dx = p2.x - p1.x;
+  const dy = p2.y - p1.y;
+  return Math.sqrt(dx * dx + dy * dy);
+}
+
+function onEditorPointerDown(e) {
+  e.preventDefault();
+  const viewport = document.getElementById('photo-editor-viewport');
+  viewport.setPointerCapture(e.pointerId);
+
+  editorState.pointers[e.pointerId] = { x: e.clientX, y: e.clientY };
+
+  const pointerCount = Object.keys(editorState.pointers).length;
+
+  if (pointerCount === 1) {
+    // Single finger — start drag
+    editorState.isDragging = true;
+    editorState.lastX = e.clientX;
+    editorState.lastY = e.clientY;
+    editorState.lastPinchDist = null;
+  } else if (pointerCount === 2) {
+    // Two fingers — start pinch; cancel drag mode
+    editorState.isDragging = false;
+    const pts = Object.values(editorState.pointers);
+    editorState.lastPinchDist = pointerDistance(pts[0], pts[1]);
+  }
+}
+
+function onEditorPointerMove(e) {
+  e.preventDefault();
+  editorState.pointers[e.pointerId] = { x: e.clientX, y: e.clientY };
+
+  const pointerCount = Object.keys(editorState.pointers).length;
+
+  if (pointerCount === 1 && editorState.isDragging) {
+    // ── Drag ──
+    const dx = e.clientX - editorState.lastX;
+    const dy = e.clientY - editorState.lastY;
+
+    editorState.x += dx;
+    editorState.y += dy;
+
+    editorState.lastX = e.clientX;
+    editorState.lastY = e.clientY;
+
+    constrainTransform();
+    applyEditorTransform();
+
+  } else if (pointerCount === 2) {
+    // ── Pinch zoom ──
+    const pts = Object.values(editorState.pointers);
+    const dist = pointerDistance(pts[0], pts[1]);
+
+    if (editorState.lastPinchDist !== null) {
+      const ratio = dist / editorState.lastPinchDist;
+      editorState.scale = Math.max(
+        editorState.minScale,
+        Math.min(editorState.scale * ratio, editorState.minScale * 8) // max 8× zoom
+      );
+      constrainTransform();
+      applyEditorTransform();
+    }
+
+    editorState.lastPinchDist = dist;
+  }
+}
+
+function onEditorPointerUp(e) {
+  delete editorState.pointers[e.pointerId];
+
+  if (Object.keys(editorState.pointers).length === 0) {
+    editorState.isDragging    = false;
+    editorState.lastPinchDist = null;
+  } else if (Object.keys(editorState.pointers).length === 1) {
+    // One finger lifted during pinch — switch back to drag with remaining finger
+    const remaining = Object.values(editorState.pointers)[0];
+    editorState.isDragging = true;
+    editorState.lastX = remaining.x;
+    editorState.lastY = remaining.y;
+    editorState.lastPinchDist = null;
+  }
+}
+
+/* ════════════════════════════════════════════════════
+   12. THEME (light/dark)
 ════════════════════════════════════════════════════ */
 
 function applyTheme() {
@@ -995,8 +1382,22 @@ function toggleTheme() {
 
 
 /* ════════════════════════════════════════════════════
-   12. UTILITY
+   13. UTILITY
 ════════════════════════════════════════════════════ */
+
+/**
+ * Convert a Blob to a base64 data URL.
+ * @param {Blob} blob
+ * @returns {Promise<string>}
+ */
+function blobToDataUrl(blob) {
+  return new Promise((resolve, reject) => {
+    const reader  = new FileReader();
+    reader.onload = () => resolve(reader.result);
+    reader.onerror = reject;
+    reader.readAsDataURL(blob);
+  });
+}
 
 function escapeHtml(str) {
   const div = document.createElement('div');
@@ -1006,7 +1407,7 @@ function escapeHtml(str) {
 
 
 /* ════════════════════════════════════════════════════
-   13. EVENT WIRING
+   14. EVENT WIRING
 ════════════════════════════════════════════════════ */
 
 document.addEventListener('DOMContentLoaded', () => {
@@ -1062,31 +1463,61 @@ document.addEventListener('DOMContentLoaded', () => {
     const file = e.target.files && e.target.files[0];
     if (!file) return;
 
-    // Validate: must be an image
     if (!file.type.startsWith('image/')) {
       alert('Please choose an image file (JPEG, PNG, HEIC, etc.)');
       return;
     }
 
-    // Store the blob for later saving; show a preview immediately
-    formPendingPhotoBlob   = file;
-    formWallpaperSelection = 'photo';
-    updateThemeGridSelection(); // deselect any theme
+    formPendingPhotoBlob      = file;
+    formPendingPhotoTransform = null; // reset transform for new photo
+    formWallpaperSelection    = 'photo';
+    updateThemeGridSelection();
 
     const reader = new FileReader();
-    reader.onload = (ev) => showPhotoPreview(ev.target.result);
+    reader.onload = (ev) => {
+      editorState.dataUrl = ev.target.result; // keep data URL ready for editor
+      showPhotoPreview(ev.target.result, null);
+    };
     reader.readAsDataURL(file);
   });
 
   // Remove photo button
   document.getElementById('btn-wp-remove-photo').addEventListener('click', () => {
-    formPendingPhotoBlob   = null;
-    formWallpaperSelection = 'none';
+    formPendingPhotoBlob      = null;
+    formPendingPhotoTransform = null;
+    formWallpaperSelection    = 'none';
+    editorState.dataUrl       = null;
     hidePhotoPreview();
-    // Clear the file input so the same file can be re-selected if needed
     document.getElementById('input-wp-photo').value = '';
     updateThemeGridSelection();
   });
+
+  // ── Photo editor ──
+
+  // Tap the preview image to open the editor
+  document.getElementById('btn-wp-adjust-photo').addEventListener('click', async () => {
+    const dataUrl = editorState.dataUrl
+      || (editingTimerId ? await loadPhoto(editingTimerId) : null)
+      || (formPendingPhotoBlob ? await blobToDataUrl(formPendingPhotoBlob) : null);
+
+    if (!dataUrl) return;
+
+    // Keep editorState.dataUrl up to date for subsequent opens
+    editorState.dataUrl = dataUrl;
+
+    openPhotoEditor(dataUrl, formPendingPhotoTransform);
+  });
+
+  // Done / Cancel buttons in the editor header
+  document.getElementById('btn-photo-editor-done').addEventListener('click', donePhotoEditor);
+  document.getElementById('btn-photo-editor-cancel').addEventListener('click', cancelPhotoEditor);
+
+  // Pointer events on the editor viewport (handles mouse + touch)
+  const editorViewport = document.getElementById('photo-editor-viewport');
+  editorViewport.addEventListener('pointerdown', onEditorPointerDown);
+  editorViewport.addEventListener('pointermove', onEditorPointerMove);
+  editorViewport.addEventListener('pointerup',   onEditorPointerUp);
+  editorViewport.addEventListener('pointercancel', onEditorPointerUp);
 
   // ── Custom milestones ──
   document.getElementById('btn-add-custom-milestone').addEventListener('click', addCustomMilestoneToForm);
