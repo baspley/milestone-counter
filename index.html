@@ -1,0 +1,231 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="theme-color" content="#0a0a0f" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="apple-mobile-web-app-title" content="Milestone" />
+  <title>Milestone Counter</title>
+  <link rel="manifest" href="manifest.json" />
+  <link rel="apple-touch-icon" href="icons/icon-192.png" />
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body class="dark" data-theme="dark">
+
+  <!-- ═══════════════════════════════════════════════
+       SCREEN: Timer List
+  ═══════════════════════════════════════════════ -->
+  <div id="screen-list" class="screen active">
+    <header class="app-header">
+      <div class="header-left">
+        <h1 class="app-title">Milestone</h1>
+      </div>
+      <div class="header-right">
+        <button id="theme-toggle" class="icon-btn" aria-label="Toggle light/dark mode">
+          <span class="icon-sun">☀</span>
+          <span class="icon-moon">☽</span>
+        </button>
+        <button id="btn-new-timer" class="icon-btn" aria-label="Add new timer">＋</button>
+      </div>
+    </header>
+
+    <div id="empty-state" class="empty-state hidden">
+      <div class="empty-icon">⏱</div>
+      <p class="empty-title">No timers yet</p>
+      <p class="empty-sub">Tap ＋ to create your first milestone</p>
+    </div>
+
+    <ul id="timer-list" class="timer-list" role="list"></ul>
+  </div>
+
+
+  <!-- ═══════════════════════════════════════════════
+       SCREEN: Timer Detail
+       The wallpaper sits as a full-bleed background
+       behind this screen. JS sets it via inline style.
+  ═══════════════════════════════════════════════ -->
+  <div id="screen-detail" class="screen no-wallpaper">
+
+    <!-- Wallpaper layer — sits behind everything else -->
+    <div id="detail-wallpaper" class="detail-wallpaper" aria-hidden="true"></div>
+
+    <!-- Dark overlay that ensures digits are always readable -->
+    <div class="detail-wallpaper-scrim" aria-hidden="true"></div>
+
+    <!-- Content sits above the wallpaper layers -->
+    <div class="detail-content">
+      <header class="app-header app-header--transparent">
+        <button id="btn-back" class="icon-btn back-btn" aria-label="Back to timer list">←</button>
+        <h2 id="detail-timer-name" class="detail-name"></h2>
+        <button id="btn-edit-timer" class="icon-btn" aria-label="Edit this timer">✎</button>
+      </header>
+
+      <p id="detail-mode-label" class="mode-label"></p>
+      <p id="detail-target-date" class="target-date"></p>
+
+      <!-- Hero display: months · weeks · days · hours -->
+      <div class="countdown-hero" id="countdown-hero" aria-live="polite" aria-atomic="true">
+        <div class="time-block">
+          <span id="disp-months" class="time-value">0</span>
+          <span class="time-label">months</span>
+        </div>
+        <div class="time-separator">·</div>
+        <div class="time-block">
+          <span id="disp-weeks" class="time-value">0</span>
+          <span class="time-label">weeks</span>
+        </div>
+        <div class="time-separator">·</div>
+        <div class="time-block">
+          <span id="disp-days" class="time-value">0</span>
+          <span class="time-label">days</span>
+        </div>
+        <div class="time-separator">·</div>
+        <div class="time-block">
+          <span id="disp-hours" class="time-value">0</span>
+          <span class="time-label">hours</span>
+        </div>
+      </div>
+
+      <p id="next-milestone-hint" class="next-milestone-hint"></p>
+    </div>
+  </div>
+
+
+  <!-- ═══════════════════════════════════════════════
+       SCREEN: Add / Edit Timer
+  ═══════════════════════════════════════════════ -->
+  <div id="screen-form" class="screen">
+    <header class="app-header">
+      <button id="btn-form-cancel" class="icon-btn back-btn" aria-label="Cancel">←</button>
+      <h2 id="form-screen-title" class="detail-name">New Timer</h2>
+      <div class="header-placeholder"></div>
+    </header>
+
+    <form id="timer-form" class="timer-form" novalidate>
+
+      <label class="form-label" for="input-name">Timer name</label>
+      <input
+        id="input-name"
+        class="form-input"
+        type="text"
+        placeholder="e.g. Weeks since surgery"
+        maxlength="48"
+        autocomplete="off"
+        required
+      />
+
+      <label class="form-label" for="input-date">Date</label>
+      <input
+        id="input-date"
+        class="form-input"
+        type="date"
+        required
+      />
+
+      <label class="form-label">Mode</label>
+      <div class="mode-toggle-group" role="group" aria-label="Timer mode">
+        <button type="button" class="mode-toggle-btn active" data-mode="countdown">Countdown to</button>
+        <button type="button" class="mode-toggle-btn" data-mode="countup">Count up from</button>
+      </div>
+
+      <!-- ── Wallpaper picker ───────────────────────
+           Two tabs: Built-in themes | Your photo
+      ── -->
+      <label class="form-label">Background image</label>
+      <div class="wallpaper-picker">
+
+        <!-- Tab bar -->
+        <div class="wp-tabs" role="tablist">
+          <button type="button" class="wp-tab active" data-tab="builtin" role="tab" aria-selected="true">
+            Built-in themes
+          </button>
+          <button type="button" class="wp-tab" data-tab="photo" role="tab" aria-selected="false">
+            Your photo
+          </button>
+        </div>
+
+        <!-- Tab: built-in themes -->
+        <div id="wp-panel-builtin" class="wp-panel" role="tabpanel">
+          <!-- Theme grids are built by JS; one section per category -->
+          <div id="wp-theme-grid" class="wp-theme-grid"></div>
+          <!-- "None" option to clear any wallpaper -->
+          <button type="button" id="btn-wp-none" class="wp-none-btn">✕ No background</button>
+        </div>
+
+        <!-- Tab: your photo -->
+        <div id="wp-panel-photo" class="wp-panel hidden" role="tabpanel">
+          <!-- Preview of the current photo (shown once one is chosen) -->
+          <div id="wp-photo-preview" class="wp-photo-preview hidden">
+            <img id="wp-preview-img" class="wp-preview-img" alt="Your chosen background" />
+            <button type="button" id="btn-wp-remove-photo" class="wp-remove-photo-btn">✕ Remove</button>
+          </div>
+
+          <!-- Upload prompt (shown when no photo is set) -->
+          <label id="wp-upload-label" class="wp-upload-label" for="input-wp-photo">
+            <span class="wp-upload-icon">📷</span>
+            <span class="wp-upload-text">Tap to choose a photo</span>
+            <span class="wp-upload-sub">Saved inside the app — works offline</span>
+          </label>
+          <!-- The actual file input — hidden, triggered by the label above -->
+          <input
+            id="input-wp-photo"
+            type="file"
+            accept="image/*"
+            class="visually-hidden"
+          />
+        </div>
+
+      </div><!-- /.wallpaper-picker -->
+
+      <!-- Preset milestones -->
+      <label class="form-label">Preset milestones</label>
+      <div id="milestone-checkboxes" class="milestone-checkboxes"></div>
+
+      <!-- Custom milestones -->
+      <label class="form-label">Custom milestones</label>
+      <p class="form-hint">Add any day number not covered above — e.g. Day 42, Day 250</p>
+      <div class="custom-milestone-input-row">
+        <input
+          id="input-custom-days"
+          class="form-input custom-days-input"
+          type="number"
+          min="1"
+          max="9999"
+          placeholder="e.g. 42"
+          autocomplete="off"
+        />
+        <button type="button" id="btn-add-custom-milestone" class="add-custom-btn">Add</button>
+      </div>
+      <div id="custom-milestone-list" class="custom-milestone-list"></div>
+
+      <div class="form-actions">
+        <button type="submit" id="btn-form-save" class="primary-btn">Save Timer</button>
+        <button type="button" id="btn-form-delete" class="danger-btn hidden">Delete Timer</button>
+      </div>
+
+    </form>
+  </div>
+
+
+  <!-- ═══════════════════════════════════════════════
+       OVERLAY: Milestone celebration card
+  ═══════════════════════════════════════════════ -->
+  <div id="milestone-overlay" class="milestone-overlay hidden" role="dialog" aria-modal="true" aria-labelledby="milestone-title">
+    <div class="milestone-card">
+      <div class="confetti-burst" aria-hidden="true">
+        <span></span><span></span><span></span>
+        <span></span><span></span><span></span>
+        <span></span><span></span><span></span>
+      </div>
+      <div class="milestone-badge" id="milestone-badge">🎯</div>
+      <h3 id="milestone-title" class="milestone-title"></h3>
+      <p id="milestone-message" class="milestone-message"></p>
+      <button id="btn-close-milestone" class="primary-btn milestone-close-btn">Brilliant ✓</button>
+    </div>
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>

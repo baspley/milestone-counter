@@ -1,0 +1,963 @@
+/* ═══════════════════════════════════════════════════════════════
+   MILESTONE COUNTER — style.css
+   Design direction: refined dark chronograph / instrument panel
+   Fonts: 'DM Mono' for digits, 'Outfit' for UI copy
+   Colour palette: near-black with amber accent
+═══════════════════════════════════════════════════════════════ */
+
+@import url('https://fonts.googleapis.com/css2?family=DM+Mono:wght@300;400;500&family=Outfit:wght@300;400;500;600&display=swap');
+
+/* ══════════════════════════════════════
+   DESIGN TOKENS
+══════════════════════════════════════ */
+:root {
+  --bg:           #0a0a0f;
+  --surface:      #13131c;
+  --surface-2:    #1e1e2e;
+  --border:       #2a2a3d;
+  --text:         #e8e8f0;
+  --text-muted:   #6b6b88;
+  --accent:       #f5a623;
+  --accent-glow:  rgba(245, 166, 35, 0.18);
+  --danger:       #e05c5c;
+  --success:      #4ecf8c;
+  --overlay-bg:   rgba(0, 0, 0, 0.72);
+  --font-ui:      'Outfit', sans-serif;
+  --font-digits:  'DM Mono', monospace;
+  --gap:       1rem;
+  --gap-lg:    1.5rem;
+  --gap-xl:    2.5rem;
+  --radius:    12px;
+  --radius-lg: 20px;
+  --safe-top:    env(safe-area-inset-top, 0px);
+  --safe-bottom: env(safe-area-inset-bottom, 0px);
+  --safe-left:   env(safe-area-inset-left, 0px);
+  --safe-right:  env(safe-area-inset-right, 0px);
+  --transition: 0.2s ease;
+}
+
+body[data-theme="light"] {
+  --bg:           #f4f3ee;
+  --surface:      #ffffff;
+  --surface-2:    #ebebdf;
+  --border:       #d8d6cc;
+  --text:         #1a1a24;
+  --text-muted:   #7a7a8a;
+  --accent:       #d4870d;
+  --accent-glow:  rgba(212, 135, 13, 0.12);
+  --overlay-bg:   rgba(30, 30, 50, 0.60);
+  --danger:       #c94040;
+}
+
+/* ══════════════════════════════════════
+   RESET & BASE
+══════════════════════════════════════ */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+html {
+  font-size: 16px;
+  -webkit-text-size-adjust: 100%;
+}
+
+body {
+  font-family: var(--font-ui);
+  background: var(--bg);
+  color: var(--text);
+  min-height: 100dvh;
+  overflow-x: hidden;
+  transition: background var(--transition), color var(--transition);
+  padding-top: var(--safe-top);
+  padding-left: var(--safe-left);
+  padding-right: var(--safe-right);
+}
+
+ul, ol { list-style: none; }
+button { cursor: pointer; font-family: var(--font-ui); }
+input  { font-family: var(--font-ui); }
+
+/* ══════════════════════════════════════
+   SCREEN ROUTING
+══════════════════════════════════════ */
+.screen {
+  display: none;
+  flex-direction: column;
+  min-height: 100dvh;
+  padding-bottom: calc(var(--gap-xl) + var(--safe-bottom));
+}
+.screen.active { display: flex; }
+
+/* ══════════════════════════════════════
+   APP HEADER
+══════════════════════════════════════ */
+.app-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: var(--gap) var(--gap-lg);
+  gap: var(--gap);
+  border-bottom: 1px solid var(--border);
+  min-height: 60px;
+  position: relative;
+  z-index: 10; /* sits above wallpaper layers */
+}
+
+/* Transparent variant used on the detail screen so the wallpaper shows through */
+.app-header--transparent {
+  border-bottom-color: rgba(255, 255, 255, 0.1);
+  background: transparent;
+}
+
+.app-title {
+  font-family: var(--font-digits);
+  font-weight: 500;
+  font-size: 1.1rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--accent);
+}
+
+.detail-name {
+  font-size: 1rem;
+  font-weight: 500;
+  letter-spacing: 0.02em;
+  flex: 1;
+  text-align: center;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.header-left, .header-right {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+}
+.header-placeholder { width: 44px; }
+
+/* ══════════════════════════════════════
+   ICON BUTTONS
+══════════════════════════════════════ */
+.icon-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  height: 44px;
+  border: none;
+  border-radius: var(--radius);
+  background: transparent;
+  color: var(--text-muted);
+  font-size: 1.25rem;
+  transition: background var(--transition), color var(--transition);
+  touch-action: manipulation;
+}
+.icon-btn:hover, .icon-btn:active {
+  background: var(--surface-2);
+  color: var(--text);
+}
+
+/* On the detail screen, icon buttons sit over the wallpaper — ensure legibility */
+.app-header--transparent .icon-btn {
+  color: rgba(255, 255, 255, 0.75);
+  background: rgba(0, 0, 0, 0.25);
+}
+.app-header--transparent .icon-btn:hover,
+.app-header--transparent .icon-btn:active {
+  background: rgba(0, 0, 0, 0.45);
+  color: #fff;
+}
+/* The timer name on detail screen needs to be white over any background */
+.app-header--transparent .detail-name {
+  color: #fff;
+  text-shadow: 0 1px 4px rgba(0,0,0,0.6);
+}
+
+body[data-theme="dark"]  .icon-sun  { display: none; }
+body[data-theme="dark"]  .icon-moon { display: block; }
+body[data-theme="light"] .icon-sun  { display: block; }
+body[data-theme="light"] .icon-moon { display: none; }
+
+/* ══════════════════════════════════════
+   TIMER LIST SCREEN
+══════════════════════════════════════ */
+.timer-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  padding: var(--gap-lg);
+}
+
+.timer-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  padding: var(--gap) var(--gap-lg);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--gap);
+  cursor: pointer;
+  transition: background var(--transition), border-color var(--transition), transform 0.15s;
+  -webkit-tap-highlight-color: transparent;
+  overflow: hidden;
+  position: relative;
+}
+
+/* Wallpaper thumbnail strip along the left edge of the list card */
+.timer-card-thumb {
+  width: 4px;
+  align-self: stretch;
+  border-radius: 2px;
+  flex-shrink: 0;
+  background: var(--border);
+}
+
+.timer-card:hover, .timer-card:active {
+  background: var(--surface-2);
+  border-color: var(--accent);
+  transform: scale(0.99);
+}
+
+.timer-card-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.timer-card-name {
+  font-weight: 500;
+  font-size: 1rem;
+  margin-bottom: 0.2rem;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.timer-card-sub {
+  font-size: 0.78rem;
+  color: var(--text-muted);
+  font-family: var(--font-digits);
+}
+
+.timer-card-days {
+  font-family: var(--font-digits);
+  font-size: 1.6rem;
+  font-weight: 300;
+  color: var(--accent);
+  white-space: nowrap;
+  text-align: right;
+}
+
+.timer-card-days-label {
+  font-size: 0.65rem;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  text-align: right;
+}
+
+/* Empty state */
+.empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  flex: 1;
+  padding: var(--gap-xl);
+  gap: var(--gap);
+  text-align: center;
+  margin-top: 20vh;
+}
+.empty-icon  { font-size: 3.5rem; opacity: 0.3; }
+.empty-title { font-size: 1.2rem; font-weight: 500; color: var(--text-muted); }
+.empty-sub   { font-size: 0.9rem; color: var(--text-muted); opacity: 0.7; }
+
+
+/* ══════════════════════════════════════
+   DETAIL SCREEN — WALLPAPER LAYERS
+
+   Three layers stacked with position:absolute / fixed:
+
+   1. detail-wallpaper      — the image itself, covers entire screen
+   2. detail-wallpaper-scrim — darkening overlay over the image
+   3. detail-content        — all UI content, positioned above both
+
+   Using position:absolute inside a position:relative container keeps
+   this screen self-contained and avoids affecting other screens.
+══════════════════════════════════════ */
+#screen-detail {
+  position: relative;
+  /* Ensure background layers don't add extra scrolling */
+  overflow: hidden;
+}
+
+.detail-wallpaper {
+  position: absolute;
+  inset: 0;
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
+  /* Smooth transition when the wallpaper image changes */
+  transition: background-image 0.4s ease, background 0.4s ease;
+  z-index: 0;
+}
+
+.detail-wallpaper-scrim {
+  position: absolute;
+  inset: 0;
+  /* Gradient scrim: darker at top (header) and bottom (hints), lighter in middle (digits).
+     This ensures text is readable without completely hiding the image. */
+  background: linear-gradient(
+    to bottom,
+    rgba(0, 0, 0, 0.60) 0%,      /* header area — needs contrast for buttons */
+    rgba(0, 0, 0, 0.35) 35%,     /* upper mid — lighter so image is visible */
+    rgba(0, 0, 0, 0.35) 65%,     /* lower mid */
+    rgba(0, 0, 0, 0.65) 100%     /* bottom — for milestone hint text */
+  );
+  z-index: 1;
+}
+
+/* When no wallpaper is set, the screen falls back to the app background colour.
+   The scrim is hidden so the plain bg shows cleanly. */
+#screen-detail.no-wallpaper .detail-wallpaper-scrim {
+  display: none;
+}
+
+.detail-content {
+  position: relative;
+  z-index: 2;
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 100dvh;
+}
+
+/* Mode label and date — white text with shadow when over wallpaper */
+.mode-label {
+  text-align: center;
+  font-size: 0.78rem;
+  text-transform: uppercase;
+  letter-spacing: 0.14em;
+  color: var(--text-muted);
+  padding: var(--gap-lg) var(--gap-lg) 0.25rem;
+}
+#screen-detail:not(.no-wallpaper) .mode-label {
+  color: rgba(255, 255, 255, 0.65);
+  text-shadow: 0 1px 3px rgba(0,0,0,0.5);
+}
+
+.target-date {
+  text-align: center;
+  font-family: var(--font-digits);
+  font-size: 0.85rem;
+  color: var(--accent);
+  letter-spacing: 0.06em;
+  margin-bottom: var(--gap-xl);
+}
+#screen-detail:not(.no-wallpaper) .target-date {
+  color: rgba(255, 220, 130, 0.9);
+  text-shadow: 0 1px 4px rgba(0,0,0,0.6);
+}
+
+/* ── Hero digits ── */
+.countdown-hero {
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  gap: 0.25rem;
+  padding: 0 var(--gap);
+  flex-wrap: wrap;
+  margin-top: 0.5rem;
+}
+
+.time-block {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.25rem;
+}
+
+.time-value {
+  font-family: var(--font-digits);
+  font-weight: 300;
+  font-size: clamp(3.2rem, 12vw, 5.5rem);
+  line-height: 1;
+  color: var(--text);
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.02em;
+  text-shadow: 0 0 40px var(--accent-glow);
+  transition: opacity 0.15s;
+}
+
+/* Over a wallpaper, all digit values become white with a strong shadow */
+#screen-detail:not(.no-wallpaper) .time-value {
+  color: #ffffff;
+  text-shadow: 0 2px 12px rgba(0,0,0,0.7), 0 0 40px rgba(245,166,35,0.3);
+}
+
+.time-block:first-child .time-value {
+  color: var(--accent);
+  text-shadow: 0 0 60px var(--accent-glow);
+}
+#screen-detail:not(.no-wallpaper) .time-block:first-child .time-value {
+  color: #ffd080;
+  text-shadow: 0 2px 12px rgba(0,0,0,0.7), 0 0 50px rgba(245,166,35,0.4);
+}
+
+.time-label {
+  font-size: 0.65rem;
+  text-transform: uppercase;
+  letter-spacing: 0.14em;
+  color: var(--text-muted);
+}
+#screen-detail:not(.no-wallpaper) .time-label {
+  color: rgba(255, 255, 255, 0.55);
+  text-shadow: 0 1px 3px rgba(0,0,0,0.6);
+}
+
+.time-separator {
+  font-family: var(--font-digits);
+  font-size: clamp(1.5rem, 5vw, 2.5rem);
+  color: var(--border);
+  line-height: 1;
+  margin-bottom: 1.4rem;
+  align-self: flex-end;
+  opacity: 0.5;
+}
+#screen-detail:not(.no-wallpaper) .time-separator {
+  color: rgba(255,255,255,0.3);
+}
+
+/* Next milestone hint */
+.next-milestone-hint {
+  text-align: center;
+  font-size: 0.8rem;
+  color: var(--text-muted);
+  margin-top: var(--gap-xl);
+  padding: 0 var(--gap-lg);
+  opacity: 0.8;
+}
+#screen-detail:not(.no-wallpaper) .next-milestone-hint {
+  color: rgba(255,255,255,0.55);
+  text-shadow: 0 1px 3px rgba(0,0,0,0.5);
+}
+
+/* Milestone pulse animation */
+@keyframes pulse-milestone {
+  0%, 100% { transform: scale(1); }
+  30%       { transform: scale(1.08); }
+  60%       { transform: scale(0.97); }
+}
+.milestone-pulse { animation: pulse-milestone 0.6s ease; }
+
+
+/* ══════════════════════════════════════
+   FORM SCREEN
+══════════════════════════════════════ */
+.timer-form {
+  display: flex;
+  flex-direction: column;
+  gap: var(--gap);
+  padding: var(--gap-lg);
+  flex: 1;
+}
+
+.form-label {
+  font-size: 0.78rem;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: var(--text-muted);
+  margin-bottom: -0.25rem;
+}
+
+.form-hint {
+  font-size: 0.78rem;
+  color: var(--text-muted);
+  margin-top: -0.25rem;
+  margin-bottom: -0.25rem;
+}
+
+.form-input {
+  width: 100%;
+  padding: 0.75rem 1rem;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  color: var(--text);
+  font-size: 1rem;
+  transition: border-color var(--transition), box-shadow var(--transition);
+  -webkit-appearance: none;
+  appearance: none;
+  outline: none;
+}
+.form-input:focus {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px var(--accent-glow);
+}
+.form-input[type="date"]::-webkit-calendar-picker-indicator {
+  filter: invert(0.5);
+  cursor: pointer;
+}
+body[data-theme="dark"] .form-input[type="date"]::-webkit-calendar-picker-indicator {
+  filter: invert(0.7) sepia(1) saturate(4) hue-rotate(5deg);
+}
+
+/* Mode toggle */
+.mode-toggle-group { display: flex; gap: 0.5rem; }
+
+.mode-toggle-btn {
+  flex: 1;
+  padding: 0.7rem;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  color: var(--text-muted);
+  font-size: 0.9rem;
+  transition: all var(--transition);
+  touch-action: manipulation;
+}
+.mode-toggle-btn.active {
+  background: var(--accent-glow);
+  border-color: var(--accent);
+  color: var(--accent);
+  font-weight: 500;
+}
+
+
+/* ══════════════════════════════════════
+   WALLPAPER PICKER
+══════════════════════════════════════ */
+.wallpaper-picker {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+}
+
+/* Tab bar */
+.wp-tabs {
+  display: flex;
+  border-bottom: 1px solid var(--border);
+}
+
+.wp-tab {
+  flex: 1;
+  padding: 0.65rem;
+  background: transparent;
+  border: none;
+  border-bottom: 2px solid transparent;
+  color: var(--text-muted);
+  font-size: 0.85rem;
+  font-weight: 400;
+  transition: all var(--transition);
+  touch-action: manipulation;
+  margin-bottom: -1px; /* overlap the panel border */
+}
+.wp-tab.active {
+  color: var(--accent);
+  border-bottom-color: var(--accent);
+  font-weight: 500;
+}
+
+/* Panels */
+.wp-panel { padding: var(--gap); }
+.wp-panel.hidden { display: none; }
+
+/* ── Built-in theme grid ── */
+.wp-theme-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 0.5rem;
+  margin-bottom: var(--gap);
+}
+
+.wp-theme-item {
+  aspect-ratio: 9 / 16; /* portrait phone proportion */
+  border-radius: 10px;
+  cursor: pointer;
+  border: 2px solid transparent;
+  transition: border-color 0.15s, transform 0.15s;
+  position: relative;
+  overflow: hidden;
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+}
+.wp-theme-item:active { transform: scale(0.96); }
+.wp-theme-item.selected {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 1px var(--accent);
+}
+
+/* The tick indicator for the selected theme */
+.wp-theme-item .wp-selected-tick {
+  display: none;
+  position: absolute;
+  bottom: 6px;
+  right: 6px;
+  width: 20px;
+  height: 20px;
+  background: var(--accent);
+  border-radius: 50%;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.65rem;
+  color: #000;
+  font-weight: bold;
+}
+.wp-theme-item.selected .wp-selected-tick { display: flex; }
+
+/* Category label above each group of themes */
+.wp-category-label {
+  font-size: 0.72rem;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: var(--text-muted);
+  margin: 0.75rem 0 0.4rem;
+}
+.wp-category-label:first-child { margin-top: 0; }
+
+/* "No background" button */
+.wp-none-btn {
+  width: 100%;
+  padding: 0.6rem;
+  background: transparent;
+  border: 1px dashed var(--border);
+  border-radius: var(--radius);
+  color: var(--text-muted);
+  font-size: 0.85rem;
+  transition: all var(--transition);
+  touch-action: manipulation;
+}
+.wp-none-btn:active {
+  background: var(--surface-2);
+}
+
+/* ── Photo upload tab ── */
+.wp-upload-label {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.4rem;
+  padding: var(--gap-lg);
+  border: 2px dashed var(--border);
+  border-radius: var(--radius-lg);
+  cursor: pointer;
+  text-align: center;
+  transition: border-color var(--transition), background var(--transition);
+  touch-action: manipulation;
+}
+.wp-upload-label:hover, .wp-upload-label:active {
+  border-color: var(--accent);
+  background: var(--accent-glow);
+}
+.wp-upload-icon { font-size: 2rem; }
+.wp-upload-text { font-size: 0.95rem; font-weight: 500; color: var(--text); }
+.wp-upload-sub  { font-size: 0.75rem; color: var(--text-muted); }
+
+/* Photo preview (shown after a photo is chosen) */
+.wp-photo-preview {
+  position: relative;
+  border-radius: var(--radius);
+  overflow: hidden;
+  margin-bottom: var(--gap);
+}
+.wp-photo-preview.hidden { display: none; }
+
+.wp-preview-img {
+  width: 100%;
+  max-height: 180px;
+  object-fit: cover;
+  display: block;
+  border-radius: var(--radius);
+}
+
+.wp-remove-photo-btn {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  background: rgba(0,0,0,0.6);
+  color: #fff;
+  border: none;
+  border-radius: 20px;
+  padding: 0.3rem 0.6rem;
+  font-size: 0.8rem;
+  touch-action: manipulation;
+}
+
+/* Visually hidden — accessible but not rendered */
+.visually-hidden {
+  position: absolute;
+  width: 1px; height: 1px;
+  padding: 0; margin: -1px;
+  overflow: hidden;
+  clip: rect(0,0,0,0);
+  white-space: nowrap;
+  border: 0;
+}
+
+
+/* ══════════════════════════════════════
+   MILESTONE CHECKBOXES
+══════════════════════════════════════ */
+.milestone-checkboxes {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+  gap: 0.5rem;
+}
+
+.milestone-check-label {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.6rem 0.75rem;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  cursor: pointer;
+  font-size: 0.88rem;
+  color: var(--text-muted);
+  transition: all var(--transition);
+  touch-action: manipulation;
+}
+.milestone-check-label:has(input:checked) {
+  border-color: var(--accent);
+  color: var(--text);
+  background: var(--accent-glow);
+}
+.milestone-check-label input[type="checkbox"] {
+  accent-color: var(--accent);
+  width: 16px; height: 16px;
+}
+
+
+/* ══════════════════════════════════════
+   CUSTOM MILESTONES
+══════════════════════════════════════ */
+.custom-milestone-input-row {
+  display: flex;
+  gap: 0.5rem;
+  align-items: stretch;
+}
+
+.custom-days-input {
+  flex: 1;
+  -moz-appearance: textfield;
+}
+.custom-days-input::-webkit-inner-spin-button,
+.custom-days-input::-webkit-outer-spin-button { -webkit-appearance: none; }
+
+.add-custom-btn {
+  padding: 0.75rem 1.1rem;
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  color: var(--accent);
+  font-size: 0.95rem;
+  font-weight: 500;
+  white-space: nowrap;
+  transition: background var(--transition);
+  touch-action: manipulation;
+}
+.add-custom-btn:active { background: var(--accent-glow); }
+
+.custom-milestone-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+  min-height: 1.5rem;
+}
+
+.custom-milestone-empty {
+  font-size: 0.82rem;
+  color: var(--text-muted);
+  font-style: italic;
+}
+
+.custom-milestone-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.5rem 0.75rem;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+}
+.custom-milestone-label { font-size: 0.88rem; color: var(--text); }
+.custom-milestone-remove {
+  background: none;
+  border: none;
+  color: var(--text-muted);
+  font-size: 0.8rem;
+  padding: 0.25rem 0.5rem;
+  border-radius: 6px;
+  transition: color var(--transition), background var(--transition);
+  touch-action: manipulation;
+}
+.custom-milestone-remove:hover, .custom-milestone-remove:active {
+  color: var(--danger);
+  background: rgba(224, 92, 92, 0.1);
+}
+
+
+/* ══════════════════════════════════════
+   FORM ACTION BUTTONS
+══════════════════════════════════════ */
+.form-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  margin-top: auto;
+  padding-top: var(--gap);
+}
+
+.primary-btn {
+  width: 100%;
+  padding: 0.9rem;
+  background: var(--accent);
+  color: #0a0a0f;
+  border: none;
+  border-radius: var(--radius);
+  font-size: 1rem;
+  font-weight: 600;
+  letter-spacing: 0.03em;
+  transition: opacity var(--transition), transform 0.1s;
+  touch-action: manipulation;
+}
+.primary-btn:active { opacity: 0.85; transform: scale(0.98); }
+
+.danger-btn {
+  width: 100%;
+  padding: 0.9rem;
+  background: transparent;
+  color: var(--danger);
+  border: 1px solid var(--danger);
+  border-radius: var(--radius);
+  font-size: 0.95rem;
+  font-weight: 500;
+  transition: background var(--transition);
+  touch-action: manipulation;
+}
+.danger-btn:active { background: rgba(224, 92, 92, 0.1); }
+
+
+/* ══════════════════════════════════════
+   MILESTONE OVERLAY
+══════════════════════════════════════ */
+.milestone-overlay {
+  position: fixed;
+  inset: 0;
+  background: var(--overlay-bg);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--gap-lg);
+  z-index: 1000;
+  animation: overlay-fade-in 0.3s ease forwards;
+  padding-bottom: calc(var(--gap-lg) + var(--safe-bottom));
+}
+.milestone-overlay.hidden { display: none; }
+
+@keyframes overlay-fade-in {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+.milestone-card {
+  position: relative;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  padding: var(--gap-xl) var(--gap-lg);
+  width: 100%;
+  max-width: 380px;
+  text-align: center;
+  overflow: hidden;
+  animation: card-rise 0.35s cubic-bezier(0.34, 1.4, 0.64, 1) forwards;
+}
+.milestone-card::before {
+  content: '';
+  position: absolute;
+  top: 0; left: 0; right: 0;
+  height: 3px;
+  background: var(--accent);
+}
+
+@keyframes card-rise {
+  from { opacity: 0; transform: translateY(24px) scale(0.96); }
+  to   { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+.milestone-badge {
+  font-size: 3.5rem;
+  margin-bottom: var(--gap);
+  display: block;
+  animation: badge-bounce 0.6s 0.2s cubic-bezier(0.34, 1.6, 0.64, 1) both;
+}
+@keyframes badge-bounce {
+  from { transform: scale(0) rotate(-20deg); opacity: 0; }
+  to   { transform: scale(1) rotate(0deg);   opacity: 1; }
+}
+
+.milestone-title {
+  font-size: 1.4rem;
+  font-weight: 600;
+  color: var(--accent);
+  margin-bottom: 0.75rem;
+  font-family: var(--font-digits);
+}
+.milestone-message {
+  font-size: 1rem;
+  color: var(--text-muted);
+  line-height: 1.6;
+  margin-bottom: var(--gap-lg);
+}
+.milestone-close-btn {
+  max-width: 200px;
+  margin: 0 auto;
+}
+
+/* Confetti */
+.confetti-burst {
+  position: absolute;
+  top: 40%; left: 50%;
+  transform: translate(-50%, -50%);
+  pointer-events: none;
+}
+.confetti-burst span {
+  position: absolute;
+  width: 8px; height: 8px;
+  border-radius: 50%;
+  background: var(--accent);
+  animation: confetti-fly 0.9s ease-out 0.1s both;
+}
+.confetti-burst span:nth-child(1)  { --dx: 0;    --dy: -1;   background: var(--accent); }
+.confetti-burst span:nth-child(2)  { --dx: 0.7;  --dy: -0.7; background: #4ecf8c; }
+.confetti-burst span:nth-child(3)  { --dx: 1;    --dy: 0;    background: var(--accent); }
+.confetti-burst span:nth-child(4)  { --dx: 0.7;  --dy: 0.7;  background: #6c9fff; }
+.confetti-burst span:nth-child(5)  { --dx: 0;    --dy: 1;    background: var(--accent); }
+.confetti-burst span:nth-child(6)  { --dx: -0.7; --dy: 0.7;  background: #4ecf8c; }
+.confetti-burst span:nth-child(7)  { --dx: -1;   --dy: 0;    background: var(--accent); }
+.confetti-burst span:nth-child(8)  { --dx: -0.7; --dy: -0.7; background: #6c9fff; }
+.confetti-burst span:nth-child(9)  { --dx: 0.4;  --dy: -0.9; background: #e05c5c; }
+
+@keyframes confetti-fly {
+  0%   { transform: translate(0, 0) scale(0); opacity: 1; }
+  60%  { transform: translate(calc(var(--dx)*70px),calc(var(--dy)*70px)) scale(1); opacity: 1; }
+  100% { transform: translate(calc(var(--dx)*110px),calc(var(--dy)*110px)) scale(0.3); opacity: 0; }
+}
+
+
+/* ══════════════════════════════════════
+   UTILITIES & SCROLLBAR
+══════════════════════════════════════ */
+.hidden { display: none !important; }
+
+::-webkit-scrollbar       { width: 4px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+  }
+}
