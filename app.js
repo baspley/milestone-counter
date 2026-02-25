@@ -798,9 +798,16 @@ async function buildWallpaperPicker(timer) {
   // Restore photo preview if this timer already has a photo
   if (timer && timer.wallpaper === 'photo') {
     const dataUrl = await loadPhoto(timer.id);
-    if (dataUrl) showPhotoPreview(dataUrl, timer.photoTransform || null);
-    else         hidePhotoPreview();
+    if (dataUrl) {
+      // Store in editorState so the "Adjust position" button can open
+      // the editor immediately without needing to reload from IndexedDB
+      editorState.dataUrl = dataUrl;
+      showPhotoPreview(dataUrl, timer.photoTransform || null);
+    } else {
+      hidePhotoPreview();
+    }
   } else {
+    editorState.dataUrl = null;
     hidePhotoPreview();
   }
 
@@ -1494,17 +1501,27 @@ document.addEventListener('DOMContentLoaded', () => {
 
   // ── Photo editor ──
 
-  // Tap the preview image to open the editor
+  // "Adjust position" button opens the full-screen editor
   document.getElementById('btn-wp-adjust-photo').addEventListener('click', async () => {
-    const dataUrl = editorState.dataUrl
-      || (editingTimerId ? await loadPhoto(editingTimerId) : null)
-      || (formPendingPhotoBlob ? await blobToDataUrl(formPendingPhotoBlob) : null);
+    // Get the data URL from whichever source has it:
+    // 1. Already loaded this session (editorState.dataUrl)
+    // 2. Stored in IndexedDB from a previous session (existing timer)
+    // 3. A newly chosen file not yet saved (pending blob)
+    let dataUrl = editorState.dataUrl;
 
-    if (!dataUrl) return;
+    if (!dataUrl && editingTimerId) {
+      dataUrl = await loadPhoto(editingTimerId);
+    }
+    if (!dataUrl && formPendingPhotoBlob) {
+      dataUrl = await blobToDataUrl(formPendingPhotoBlob);
+    }
 
-    // Keep editorState.dataUrl up to date for subsequent opens
+    if (!dataUrl) {
+      alert('No photo found. Please choose a photo first.');
+      return;
+    }
+
     editorState.dataUrl = dataUrl;
-
     openPhotoEditor(dataUrl, formPendingPhotoTransform);
   });
 
