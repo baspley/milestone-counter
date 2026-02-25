@@ -670,18 +670,7 @@ body[data-theme="dark"] .form-input[type="date"]::-webkit-calendar-picker-indica
   border-radius: var(--radius);
 }
 
-.wp-remove-photo-btn {
-  position: absolute;
-  top: 8px;
-  right: 8px;
-  background: rgba(0,0,0,0.6);
-  color: #fff;
-  border: none;
-  border-radius: 20px;
-  padding: 0.3rem 0.6rem;
-  font-size: 0.8rem;
-  touch-action: manipulation;
-}
+
 
 /* Visually hidden — accessible but not rendered */
 .visually-hidden {
@@ -1069,36 +1058,59 @@ body[data-theme="dark"] .form-input[type="date"]::-webkit-calendar-picker-indica
   background: #111;
 }
 
-/* ── Photo preview "tap to adjust" affordance ── */
-.wp-preview-tap-target {
-  position: relative;
-  display: block;
-  cursor: pointer;
-  border-radius: var(--radius);
-  overflow: hidden;
-  -webkit-tap-highlight-color: transparent;
+/* ── Photo preview action buttons ── */
+.wp-photo-actions {
+  display: flex;
+  gap: 0.5rem;
+  margin-top: 0.5rem;
 }
 
-.wp-preview-adjust-hint {
-  position: absolute;
-  inset: 0;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background: rgba(0,0,0,0.35);
-  opacity: 0;
-  transition: opacity 0.2s;
+.wp-action-btn {
+  flex: 1;
+  padding: 0.65rem 0.5rem;
   border-radius: var(--radius);
-  font-size: 0.85rem;
-  color: #fff;
+  font-size: 0.88rem;
   font-weight: 500;
-  letter-spacing: 0.04em;
+  border: 1px solid var(--border);
+  touch-action: manipulation;
+  transition: background var(--transition), color var(--transition);
 }
-/* Always show the hint on touch devices so it's discoverable */
-@media (hover: none) {
-  .wp-preview-adjust-hint { opacity: 1; }
+
+.wp-action-btn--adjust {
+  background: var(--surface-2);
+  color: var(--accent);
+  border-color: var(--accent);
 }
-.wp-preview-tap-target:hover .wp-preview-adjust-hint,
-.wp-preview-tap-target:active .wp-preview-adjust-hint {
-  opacity: 1;
+.wp-action-btn--adjust:active {
+  background: var(--accent-glow);
+}
+
+.wp-action-btn--remove {
+  background: transparent;
+  color: var(--text-muted);
+}
+.wp-action-btn--remove:active {
+  color: var(--danger);
+  background: rgba(224, 92, 92, 0.1);
+}
+
+/* ── Adjust position button — always visible above the photo preview ── */
+.wp-adjust-btn {
+  display: block;
+  width: 100%;
+  padding: 0.75rem;
+  margin-bottom: 0.5rem;
+  background: var(--accent-glow);
+  border: 1px solid var(--accent);
+  border-radius: var(--radius);
+  color: var(--accent);
+  font-size: 0.95rem;
+  font-weight: 600;
+  text-align: center;
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+}
+.wp-adjust-btn:active {
+  background: var(--accent);
+  color: #000;
 }

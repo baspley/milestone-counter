@@ -158,14 +158,9 @@
         <div id="wp-panel-photo" class="wp-panel hidden" role="tabpanel">
           <!-- Preview of the current photo (shown once one is chosen) -->
           <div id="wp-photo-preview" class="wp-photo-preview hidden">
-            <!-- Tapping the image opens the position/zoom editor -->
-            <div id="btn-wp-adjust-photo" class="wp-preview-tap-target" role="button" tabindex="0" aria-label="Tap to adjust photo position and zoom">
-              <img id="wp-preview-img" class="wp-preview-img" alt="Your chosen background" />
-              <div class="wp-preview-adjust-hint">
-                <span>⤢ Tap to adjust</span>
-              </div>
-            </div>
-            <button type="button" id="btn-wp-remove-photo" class="wp-remove-photo-btn">✕ Remove</button>
+            <button type="button" id="btn-wp-adjust-photo" class="wp-adjust-btn">⤢ Adjust position &amp; zoom</button>
+            <img id="wp-preview-img" class="wp-preview-img" alt="Your chosen background" />
+            <button type="button" id="btn-wp-remove-photo" class="wp-remove-photo-btn">✕ Remove photo</button>
           </div>
 
           <!-- Upload prompt (shown when no photo is set) -->
