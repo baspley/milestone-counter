@@ -107,7 +107,6 @@
         </div>
       </div>
 
-      <p id="next-milestone-hint" class="next-milestone-hint"></p>
 
       <!-- Message displayed when within a message window -->
       <div id="detail-message" class="detail-message hidden"></div>
@@ -202,34 +201,13 @@
 
       </div><!-- /.wallpaper-picker -->
 
-      <!-- Preset milestones -->
-      <label class="form-label">Preset milestones</label>
-      <div id="milestone-checkboxes" class="milestone-checkboxes"></div>
-
-      <!-- Custom milestones -->
-      <label class="form-label">Custom milestones</label>
-      <p class="form-hint">Add any day number not covered above — e.g. Day 42, Day 250</p>
-      <div class="custom-milestone-input-row">
-        <input
-          id="input-custom-days"
-          class="form-input custom-days-input"
-          type="number"
-          min="1"
-          max="9999"
-          placeholder="e.g. 42"
-          autocomplete="off"
-        />
-        <button type="button" id="btn-add-custom-milestone" class="add-custom-btn">Add</button>
-      </div>
-      <div id="custom-milestone-list" class="custom-milestone-list"></div>
-
       <!-- ── Messages ─────────────────────────────────
            Each message is shown on the detail screen
            below the time display, from a set number of
            days before a chosen milestone.
       ── -->
       <label class="form-label">Messages</label>
-      <p class="form-hint">Add a message to display on the timer screen from a chosen number of days before a milestone — e.g. "Buy a card and gift" from 14 days before the 1 Year mark.</p>
+      <p class="form-hint">Add messages to display on the timer screen from a chosen number of days before a specific date — e.g. "Buy a card and gift" from 14 days before your anniversary.</p>
 
       <!-- Message builder inputs -->
       <div class="message-builder">
@@ -242,46 +220,24 @@
           rows="2"
         ></textarea>
 
-        <!-- Days before -->
-        <div class="message-builder-row">
-          <label class="message-builder-label">Show from</label>
-          <input
-            id="input-message-days"
-            class="form-input message-days-input"
-            type="number"
-            min="1"
-            max="3650"
-            placeholder="e.g. 14"
-          />
-          <label class="message-builder-label">days before</label>
-        </div>
 
-        <!-- Trigger type toggle -->
-        <div class="message-trigger-toggle" role="group" aria-label="Trigger type">
-          <button type="button" class="msg-trigger-btn active" data-trigger="milestone">Milestone</button>
-          <button type="button" class="msg-trigger-btn" data-trigger="date">Specific date</button>
-        </div>
 
-        <!-- Milestone picker (shown when trigger=milestone) -->
-        <select id="input-message-milestone" class="form-input message-milestone-select">
-          <option value="">— choose a milestone —</option>
-        </select>
-
-        <!-- Date picker (shown when trigger=date, hidden by default) -->
-        <div id="message-date-wrap" class="hidden">
-          <input
-            id="input-message-date"
-            class="form-input"
-            type="date"
-            aria-label="Trigger date"
-          />
-          <p class="form-hint" style="margin-top:0.4rem">Message will appear from the set number of days before this date.</p>
-        </div>
+        <!-- Date the message is tied to -->
+        <input
+          id="input-message-date"
+          class="form-input"
+          type="date"
+          aria-label="Message date"
+        />
 
         <button type="button" id="btn-add-message" class="add-custom-btn message-add-btn">Add message</button>
       </div>
 
       <!-- List of added messages -->
+      <div class="message-list-header">
+        <span class="form-hint" style="margin:0">Messages</span>
+        <span id="message-count" class="message-count">0 of 5</span>
+      </div>
       <div id="message-list" class="message-list"></div>
 
       <div class="form-actions">
@@ -290,24 +246,6 @@
       </div>
 
     </form>
-  </div>
-
-
-  <!-- ═══════════════════════════════════════════════
-       OVERLAY: Milestone celebration card
-  ═══════════════════════════════════════════════ -->
-  <div id="milestone-overlay" class="milestone-overlay hidden" role="dialog" aria-modal="true" aria-labelledby="milestone-title">
-    <div class="milestone-card">
-      <div class="confetti-burst" aria-hidden="true">
-        <span></span><span></span><span></span>
-        <span></span><span></span><span></span>
-        <span></span><span></span><span></span>
-      </div>
-      <div class="milestone-badge" id="milestone-badge">🎯</div>
-      <h3 id="milestone-title" class="milestone-title"></h3>
-      <p id="milestone-message" class="milestone-message"></p>
-      <button id="btn-close-milestone" class="primary-btn milestone-close-btn">Brilliant ✓</button>
-    </div>
   </div>
 
 

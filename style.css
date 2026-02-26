@@ -1563,3 +1563,16 @@ body[data-theme="dark"] .form-input[type="date"]::-webkit-calendar-picker-indica
   color: #000;
   font-weight: 600;
 }
+
+/* ── Message list header ── */
+.message-list-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 0.4rem;
+}
+.message-count {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  font-family: var(--font-digits);
+}

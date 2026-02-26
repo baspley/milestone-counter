@@ -215,54 +215,6 @@ async function deletePhoto(timerId) {
    3. MILESTONE DEFINITIONS
 ════════════════════════════════════════════════════ */
 
-const MILESTONE_DEFINITIONS = [
-  { key: '7d',    label: '1 Week',      days: 7,    badge: '🌱', messages: ["Seven days. One week. The very first proof that you're doing this.", "A week in — small steps compound into extraordinary journeys.", "Seven sunrises since you started. Keep going."] },
-  { key: '14d',   label: '2 Weeks',     days: 14,   badge: '✨', messages: ["Two weeks of showing up. That's not nothing — that's everything.", "Fourteen days. You've built something real here.", "Two weeks down. The momentum is yours now."] },
-  { key: '21d',   label: '21 Days',     days: 21,   badge: '🔥', messages: ["21 days — the classic milestone. You've built a habit.", "Three weeks. Science says habits form around here. Yours already has.", "21 days of commitment. Not a phase — a foundation."] },
-  { key: '30d',   label: '30 Days',     days: 30,   badge: '⚡', messages: ["One month. That's 720 hours of choosing this path.", "30 days. A full month of proving yourself right.", "A month ago you made a decision. Today you're living it."] },
-  { key: '50d',   label: '50 Days',     days: 50,   badge: '🌟', messages: ["Half a century of days. You've outlasted the doubts.", "50 days in — you're not just starting any more. You belong here.", "Fifty days. Solid, undeniable progress."] },
-  { key: '60d',   label: '60 Days',     days: 60,   badge: '💎', messages: ["Two months. Most people quit before this. You didn't.", "60 days strong. This is who you are now.", "Two months of daily commitment. That's rare and worth celebrating."] },
-  { key: '90d',   label: '90 Days',     days: 90,   badge: '🏅', messages: ["90 days. Three months of getting up and doing the work.", "The 90-day mark — a landmark many aim for, fewer reach.", "Three months in. Look back at day one — that person would be proud of you."] },
-  { key: '100d',  label: '100 Days',    days: 100,  badge: '💯', messages: ["100 days. A round, beautiful, hard-won number.", "Triple digits. You made it to 100.", "100 days — a milestone worth sitting with. You did this."] },
-  { key: '180d',  label: '6 Months',    days: 180,  badge: '🌊', messages: ["Half a year. Six months of choosing the harder right thing.", "180 days. You're well on your way.", "Six months in. This isn't a streak any more — it's a lifestyle."] },
-  { key: '200d',  label: '200 Days',    days: 200,  badge: '🚀', messages: ["200 days. Two hundred. What a number.", "Past 200 now — the doubts couldn't keep up.", "200 days of proof that you mean it."] },
-  { key: '365d',  label: '1 Year',      days: 365,  badge: '🎉', messages: ["One year. 365 days. This deserves to be celebrated.", "A full year. Every single day counts, and you counted them all.", "365 days. You've lapped the calendar. This is real."] },
-  { key: '500d',  label: '500 Days',    days: 500,  badge: '🏆', messages: ["500 days. That's deep, solid commitment.", "Past 500 now. Most milestones are long behind you.", "Five hundred days. Extraordinary."] },
-  { key: '730d',  label: '2 Years',     days: 730,  badge: '🌠', messages: ["Two years. This is part of you now.", "730 days — two full laps around the sun.", "Two years in. What started as a decision is now simply who you are."] },
-  { key: '1000d', label: '1,000 Days',  days: 1000, badge: '👑', messages: ["1,000 days. A thousand. The number itself is extraordinary.", "You're in four-digit territory now.", "1,000 days. That's dedication most people can't imagine. You lived it."] },
-  { key: '1825d', label: '5 Years',     days: 1825, badge: '🌍', messages: ["Five years. Half a decade. Absolutely remarkable.", "1,825 days. You've made this part of the fabric of your life.", "Five years on. This milestone belongs entirely to you."] },
-];
-
-function getPresetMilestoneByKey(key) {
-  return MILESTONE_DEFINITIONS.find(m => m.key === key);
-}
-
-function resolveMilestone(key, timer) {
-  const preset = getPresetMilestoneByKey(key);
-  if (preset) return preset;
-  if (key.startsWith('custom_') && timer.customMilestones) {
-    const custom = timer.customMilestones.find(m => m.key === key);
-    if (custom) {
-      return {
-        key:   custom.key,
-        label: `Day ${custom.days}`,
-        days:  custom.days,
-        badge: '🎯',
-        messages: [
-          `Day ${custom.days}. You set this milestone yourself — and you reached it.`,
-          `${custom.days} days. Exactly where you planned to be.`,
-          `Day ${custom.days} reached. Mark it, remember it.`,
-        ],
-      };
-    }
-  }
-  return null;
-}
-
-function pickMilestoneMessage(milestone) {
-  const msgs = milestone.messages;
-  return msgs[Math.floor(Math.random() * msgs.length)];
-}
 
 
 /* ════════════════════════════════════════════════════
@@ -281,9 +233,6 @@ const STORAGE_KEY = 'milestoneCounter_v1';
  *   date:             string           "YYYY-MM-DD"
  *   mode:             'countdown'|'countup'
  *   wallpaper:        string|'none'    theme key, 'photo', or 'none'
- *   milestoneKeys:    string[]
- *   customMilestones: Array<{key,days}>
- *   shownMilestones:  string[]
  * }
  */
 let appState = {
@@ -358,24 +307,6 @@ function getTimerValues(timer) {
 function formatDate(dateStr) {
   const d = new Date(dateStr + 'T00:00:00');
   return d.toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' });
-}
-
-function getNextMilestone(timer, totalDays) {
-  const allKeys = [
-    ...(timer.milestoneKeys    || []),
-    ...(timer.customMilestones || []).map(m => m.key),
-  ];
-  let next = null;
-  for (const key of allKeys) {
-    const def = resolveMilestone(key, timer);
-    if (!def) continue;
-    if (timer.mode === 'countup') {
-      if (def.days > totalDays && (!next || def.days < next.days)) next = def;
-    } else {
-      if (def.days < totalDays && (!next || def.days > next.days)) next = def;
-    }
-  }
-  return next;
 }
 
 
@@ -662,76 +593,8 @@ function updateDetailDisplay() {
   document.getElementById('disp-weeks').textContent  = isExpired ? '--' : String(dispWeeks);
   document.getElementById('disp-days').textContent   = isExpired ? '--' : String(dispDays);
 
-  const nextMs = getNextMilestone(timer, totalDays);
-  const hintEl = document.getElementById('next-milestone-hint');
-
-  if (nextMs && !isExpired) {
-    const daysAway = timer.mode === 'countup'
-      ? nextMs.days - totalDays
-      : totalDays - nextMs.days;
-    hintEl.textContent = `Next: ${nextMs.label} — ${daysAway} day${daysAway === 1 ? '' : 's'} away`;
-  } else if (isExpired) {
-    hintEl.textContent = timer.mode === 'countdown' ? 'Date reached.' : '';
-  } else {
-    hintEl.textContent = 'All milestones reached!';
-  }
-
-  checkMilestones(timer, totalDays);
-
   // Show active message on detail screen
   updateDetailMessage(timer, totalDays);
-}
-
-function checkMilestones(timer, totalDays) {
-  if (!document.getElementById('milestone-overlay').classList.contains('hidden')) return;
-  if (totalDays === 0) return;
-
-  const allKeys   = [
-    ...(timer.milestoneKeys    || []),
-    ...(timer.customMilestones || []).map(m => m.key),
-  ];
-  const shownKeys = timer.shownMilestones || [];
-
-  for (const key of allKeys) {
-    if (shownKeys.includes(key)) continue;
-    const def = resolveMilestone(key, timer);
-    if (!def) continue;
-
-    const shouldFire = timer.mode === 'countup'
-      ? totalDays >= def.days
-      : totalDays <= def.days;
-
-    if (shouldFire) {
-      timer.shownMilestones = [...shownKeys, key];
-      saveState();
-      showMilestoneOverlay(def);
-      return;
-    }
-  }
-}
-
-function showMilestoneOverlay(milestoneDef) {
-  const overlay = document.getElementById('milestone-overlay');
-
-  document.getElementById('milestone-badge').textContent   = milestoneDef.badge;
-  document.getElementById('milestone-title').textContent   = milestoneDef.label;
-  document.getElementById('milestone-message').textContent = pickMilestoneMessage(milestoneDef);
-
-  const heroEl = document.getElementById('countdown-hero');
-  heroEl.classList.remove('milestone-pulse');
-  void heroEl.offsetWidth;
-  heroEl.classList.add('milestone-pulse');
-
-  const card    = overlay.querySelector('.milestone-card');
-  const newCard = card.cloneNode(true);
-  card.replaceWith(newCard);
-  newCard.querySelector('#btn-close-milestone').addEventListener('click', closeMilestoneOverlay);
-
-  overlay.classList.remove('hidden');
-}
-
-function closeMilestoneOverlay() {
-  document.getElementById('milestone-overlay').classList.add('hidden');
 }
 
 
@@ -778,12 +641,7 @@ function openFormScreen(timerId = null) {
     btn.classList.toggle('active', btn.dataset.mode === currentMode);
   });
 
-  buildMilestoneCheckboxes(timer ? (timer.milestoneKeys || []) : []);
-  setFormCustomMilestones(timer ? (timer.customMilestones || []) : []);
   setFormMessages(timer ? (timer.messages || []) : [], timer);
-  // Re-populate the milestone dropdown for the message builder
-  const milestoneDropdown = document.getElementById('input-message-milestone');
-  if (milestoneDropdown) milestoneDropdown.innerHTML = buildMilestoneOptions(timer);
   document.getElementById('btn-form-delete').classList.toggle('hidden', !isEditing);
 
   // Wallpaper state
@@ -895,76 +753,8 @@ function hidePhotoPreview() {
 
 // ── Milestone checkbox builder ──
 
-/**
- * Build the preset milestone checkboxes.
- * @param {string[]} selectedKeys
- */
-function buildMilestoneCheckboxes(selectedKeys = []) {
-  const container = document.getElementById('milestone-checkboxes');
-  container.innerHTML = '';
-  MILESTONE_DEFINITIONS.forEach(def => {
-    const label = document.createElement('label');
-    label.className = 'milestone-check-label';
-    label.innerHTML = `
-      <input type="checkbox" value="${def.key}" ${selectedKeys.includes(def.key) ? 'checked' : ''} />
-      ${def.badge} ${def.label}
-    `;
-    container.appendChild(label);
-  });
-}
-
 
 // ── Custom milestone list ──
-
-function renderCustomMilestoneRows(milestones) {
-  const listEl = document.getElementById('custom-milestone-list');
-  listEl.innerHTML = '';
-
-  if (milestones.length === 0) {
-    listEl.innerHTML = '<p class="custom-milestone-empty">None added yet</p>';
-    return;
-  }
-
-  [...milestones].sort((a, b) => a.days - b.days).forEach(cm => {
-    const row = document.createElement('div');
-    row.className = 'custom-milestone-row';
-    row.innerHTML = `
-      <span class="custom-milestone-label">🎯 Day ${cm.days}</span>
-      <button type="button" class="custom-milestone-remove" aria-label="Remove Day ${cm.days}">✕</button>
-    `;
-    row.querySelector('.custom-milestone-remove').addEventListener('click', () => {
-      setFormCustomMilestones(getFormCustomMilestones().filter(m => m.key !== cm.key));
-    });
-    listEl.appendChild(row);
-  });
-}
-
-function getFormCustomMilestones() {
-  const raw = document.getElementById('custom-milestone-list').dataset.milestones;
-  return raw ? JSON.parse(raw) : [];
-}
-
-function setFormCustomMilestones(milestones) {
-  document.getElementById('custom-milestone-list').dataset.milestones = JSON.stringify(milestones);
-  renderCustomMilestoneRows(milestones);
-}
-
-function addCustomMilestoneToForm() {
-  const input = document.getElementById('input-custom-days');
-  const days  = parseInt(input.value, 10);
-
-  if (!days || days < 1 || days > 9999) { alert('Please enter a number between 1 and 9,999.'); return; }
-
-  const existing   = getFormCustomMilestones();
-  const presetDays = MILESTONE_DEFINITIONS.map(d => d.days);
-  if (existing.some(m => m.days === days) || presetDays.includes(days)) {
-    alert(`Day ${days} is already covered.`); return;
-  }
-
-  setFormCustomMilestones([...existing, { key: `custom_${days}`, days }]);
-  input.value = '';
-  input.focus();
-}
 
 
 /* ════════════════════════════════════════════════════
@@ -986,28 +776,6 @@ function addCustomMilestoneToForm() {
 ════════════════════════════════════════════════════ */
 
 /**
- * Build the dropdown options for the milestone picker in the message form.
- * Includes both preset and custom milestones for the current timer.
- * @param {object|null} timer
- * @returns {string} HTML option elements
- */
-function buildMilestoneOptions(timer) {
-  let options = '<option value="">— choose a milestone —</option>';
-
-  MILESTONE_DEFINITIONS.forEach(def => {
-    options += `<option value="${def.key}">${def.badge} ${def.label}</option>`;
-  });
-
-  if (timer && timer.customMilestones) {
-    timer.customMilestones.forEach(cm => {
-      options += `<option value="${cm.key}">🎯 Day ${cm.days}</option>`;
-    });
-  }
-
-  return options;
-}
-
-/**
  * Render the message rows in the form.
  * @param {Array} messages
  * @param {object|null} timer
@@ -1015,6 +783,10 @@ function buildMilestoneOptions(timer) {
 function renderMessageRows(messages, timer = null) {
   const container = document.getElementById('message-list');
   container.innerHTML = '';
+
+  // Show count above the list
+  const countEl = document.getElementById('message-count');
+  if (countEl) countEl.textContent = `${messages.length} of 5`;
 
   if (messages.length === 0) {
     container.innerHTML = '<p class="custom-milestone-empty">No messages added yet</p>';
@@ -1025,16 +797,8 @@ function renderMessageRows(messages, timer = null) {
     const row = document.createElement('div');
     row.className = 'message-row';
 
-    // Build trigger label — either a milestone name or a specific date
-    let triggerLabel;
-    if (msg.triggerType === 'date' && msg.triggerDate) {
-      triggerLabel = `📅 ${formatDate(msg.triggerDate)}`;
-    } else if (msg.milestoneKey) {
-      const def = resolveMilestone(msg.milestoneKey, timer || {});
-      triggerLabel = def ? `${def.badge} ${def.label}` : 'Unknown milestone';
-    } else {
-      triggerLabel = 'Unknown trigger';
-    }
+    // Build trigger label from the date
+    const triggerLabel = msg.triggerDate ? `📅 ${formatDate(msg.triggerDate)}` : 'No date set';
 
     row.innerHTML = `
       <div class="message-row-header">
@@ -1042,7 +806,7 @@ function renderMessageRows(messages, timer = null) {
         <button type="button" class="custom-milestone-remove message-remove-btn" data-index="${index}" aria-label="Remove message">✕</button>
       </div>
       <p class="message-row-text">${escapeHtml(msg.text)}</p>
-      <p class="message-row-meta">Show from ${msg.daysBefore} day${msg.daysBefore === 1 ? '' : 's'} before</p>
+      <p class="message-row-meta">Showing from ${formatDate(msg.triggerDate)}</p>
     `;
 
     row.querySelector('.message-remove-btn').addEventListener('click', () => {
@@ -1075,42 +839,20 @@ function setFormMessages(messages, timer = null) {
  */
 function addMessageToForm() {
   const textEl        = document.getElementById('input-message-text');
-  const daysEl        = document.getElementById('input-message-days');
-  const milestoneEl   = document.getElementById('input-message-milestone');
   const triggerDateEl = document.getElementById('input-message-date');
 
   const text        = textEl.value.trim();
-  const daysBefore  = parseInt(daysEl.value, 10);
-  const milestoneKey = milestoneEl.value;
-  const triggerDate  = triggerDateEl ? triggerDateEl.value : '';
+  const triggerDate = triggerDateEl ? triggerDateEl.value : '';
 
-  // Determine trigger type based on which field is filled
-  const hasMilestone = !!milestoneKey;
-  const hasDate      = !!triggerDate;
-
-  if (!text) { alert('Please enter a message.'); return; }
-  if (!daysBefore || daysBefore < 1) { alert('Please enter how many days before to start showing this message.'); return; }
-  if (!hasMilestone && !hasDate) { alert('Please choose a milestone or enter a date.'); return; }
-
-  const entry = { text, daysBefore };
-
-  if (hasDate) {
-    // Date trigger takes priority if both are filled
-    entry.triggerType = 'date';
-    entry.triggerDate = triggerDate;
-  } else {
-    entry.triggerType   = 'milestone';
-    entry.milestoneKey  = milestoneKey;
-  }
+  if (!text)        { alert('Please enter a message.'); return; }
+  if (!triggerDate) { alert('Please choose a date for this message.'); return; }
 
   const current = getFormMessages();
-  current.push(entry);
+  if (current.length >= 5) { alert('Maximum of 5 messages per timer reached. Remove one to add another.'); return; }
+  current.push({ text, triggerType: 'date', triggerDate });
   setFormMessages(current, formEditingTimer);
 
-  // Clear inputs
-  textEl.value        = '';
-  daysEl.value        = '';
-  milestoneEl.value   = '';
+  textEl.value = '';
   if (triggerDateEl) triggerDateEl.value = '';
   textEl.focus();
 }
@@ -1128,11 +870,8 @@ function readFormValues() {
   if (!name) { alert('Please give your timer a name.'); return null; }
   if (!date) { alert('Please choose a date.'); return null; }
 
-  const milestoneKeys    = Array.from(document.querySelectorAll('#milestone-checkboxes input[type="checkbox"]:checked')).map(cb => cb.value);
-  const customMilestones = getFormCustomMilestones();
-  const messages         = getFormMessages();
-
-  return { name, date, mode, milestoneKeys, customMilestones, messages, wallpaper: formWallpaperSelection };
+  const messages = getFormMessages();
+  return { name, date, mode, messages, wallpaper: formWallpaperSelection };
 }
 
 async function handleFormSubmit(event) {
@@ -1150,24 +889,20 @@ async function handleFormSubmit(event) {
       appState.timers[index] = {
         ...existing,
         ...values,
-        photoTransform:  values.wallpaper === 'photo' ? (formPendingPhotoTransform || existing.photoTransform || null) : null,
-        messages:        values.messages,
-        shownMilestones: dateChanged ? [] : existing.shownMilestones,
+        photoTransform: values.wallpaper === 'photo' ? (formPendingPhotoTransform || existing.photoTransform || null) : null,
+        messages:       values.messages,
       };
     }
     savedId = editingTimerId;
   } else {
     const newTimer = {
-      id:               generateId(),
-      name:             values.name,
-      date:             values.date,
-      mode:             values.mode,
-      wallpaper:        values.wallpaper,
-      photoTransform:   values.wallpaper === 'photo' ? formPendingPhotoTransform : null,
-      milestoneKeys:    values.milestoneKeys,
-      customMilestones: values.customMilestones,
-      messages:         values.messages,
-      shownMilestones:  [],
+      id:             generateId(),
+      name:           values.name,
+      date:           values.date,
+      mode:           values.mode,
+      wallpaper:      values.wallpaper,
+      photoTransform: values.wallpaper === 'photo' ? formPendingPhotoTransform : null,
+      messages:       values.messages,
     };
     appState.timers.push(newTimer);
     savedId = newTimer.id;
@@ -1581,27 +1316,12 @@ function getActiveMessage(timer, totalDays) {
       daysUntil    = Math.round((triggerDay - today) / (1000 * 60 * 60 * 24));
       triggerLabel = `📅 ${formatDate(msg.triggerDate)}`;
 
-    } else if (msg.milestoneKey) {
-      // ── Milestone trigger ──
-      const def = resolveMilestone(msg.milestoneKey, timer);
-      if (!def) continue;
-
-      if (timer.mode === 'countup') {
-        // Count-up: how many more days until we reach this milestone threshold
-        daysUntil = def.days - totalDays;
-      } else {
-        // Countdown: how many days until we have exactly def.days remaining
-        daysUntil = totalDays - def.days;
-        if (daysUntil < 0) daysUntil = 0;
-      }
-      triggerLabel = `${def.badge} ${def.label}`;
-
     } else {
-      continue; // No valid trigger
+      continue; // No valid trigger — date trigger required
     }
 
-    // Show the message within the window: from daysBefore days away down to 0 (the day itself)
-    const inWindow = daysUntil >= 0 && daysUntil <= msg.daysBefore;
+    // Show the message from the trigger date onwards (daysUntil <= 0 means date has arrived or passed)
+    const inWindow = daysUntil <= 0;
 
     if (inWindow && daysUntil < bestDaysUntil) {
       bestDaysUntil = daysUntil;
@@ -1627,9 +1347,7 @@ function updateDetailMessage(timer, totalDays) {
   if (active) {
     const dayStr = active.daysUntil === 0
       ? 'Today'
-      : active.daysUntil === 1
-        ? 'Tomorrow'
-        : `${active.daysUntil} days to go`;
+      : `Since ${active.triggerLabel}`;
 
     el.innerHTML = `<span class="detail-message-text">${escapeHtml(active.text)}</span><span class="detail-message-when">${dayStr} — ${active.triggerLabel}</span>`;
     el.classList.remove('hidden');
@@ -1812,24 +1530,7 @@ document.addEventListener('DOMContentLoaded', () => {
   // ── Messages ──
   document.getElementById('btn-add-message').addEventListener('click', addMessageToForm);
 
-  // Toggle between milestone and date trigger modes in message builder
-  document.querySelectorAll('.msg-trigger-btn').forEach(btn => {
-    btn.addEventListener('click', () => {
-      document.querySelectorAll('.msg-trigger-btn').forEach(b => b.classList.remove('active'));
-      btn.classList.add('active');
 
-      const isDate = btn.dataset.trigger === 'date';
-      document.getElementById('message-date-wrap').classList.toggle('hidden', !isDate);
-      document.getElementById('input-message-milestone').classList.toggle('hidden', isDate);
-
-      // Clear the inactive field to avoid stale values being picked up by addMessageToForm
-      if (isDate) {
-        document.getElementById('input-message-milestone').value = '';
-      } else {
-        document.getElementById('input-message-date').value = '';
-      }
-    });
-  });
 
   // ── Custom milestones ──
   document.getElementById('btn-add-custom-milestone').addEventListener('click', addCustomMilestoneToForm);
