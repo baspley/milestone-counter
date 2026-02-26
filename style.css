@@ -1450,35 +1450,32 @@ body[data-theme="dark"] .form-input[type="date"]::-webkit-calendar-picker-indica
 .unit-slider-wrap {
   display: flex;
   flex-direction: column;
-  align-items: stretch;
+  align-items: center;
   padding: 0 var(--gap-lg);
   margin-top: var(--gap);
-  gap: 0.4rem;
+  gap: 0.5rem;
+  /* Fixed width so thumb aligns with labels.
+     The thumb is 22px wide; with 4 stops (0,1,2,3) the track is
+     divided into 3 equal segments. We let the labels drive the width
+     and constrain the slider to match. */
+  width: 100%;
+  max-width: 360px;
+  margin-left: auto;
+  margin-right: auto;
 }
 
-/* The range input — styled to match the app */
+/* The range input */
 .unit-slider {
   -webkit-appearance: none;
   appearance: none;
+  /* Full width of wrapper so thumb stop positions match label positions */
   width: 100%;
   height: 4px;
   border-radius: 2px;
   background: var(--border);
   outline: none;
   cursor: pointer;
-  touch-action: pan-y; /* allow vertical scroll but capture horizontal */
-}
-
-/* Track fill colour */
-.unit-slider::-webkit-slider-runnable-track {
-  height: 4px;
-  border-radius: 2px;
-  background: linear-gradient(
-    to right,
-    var(--accent) 0%,
-    var(--accent) calc(var(--slider-pct, 0%) ),
-    var(--border) calc(var(--slider-pct, 0%))
-  );
+  touch-action: pan-y;
 }
 
 /* Thumb */
@@ -1511,18 +1508,33 @@ body[data-theme="dark"] .form-input[type="date"]::-webkit-calendar-picker-indica
   box-shadow: 0 0 0 3px var(--accent-glow);
 }
 
-/* Labels below the slider */
+/* Labels — 4 evenly spaced items, each centred over its stop position.
+   The first and last labels align with the track ends by using a
+   half-thumb-width offset (11px) as padding so the text centres
+   over the thumb at positions 0 and 3. */
 .unit-slider-labels {
   display: flex;
   justify-content: space-between;
+  width: 100%;
   font-size: 0.7rem;
   color: var(--text-muted);
   text-transform: uppercase;
-  letter-spacing: 0.08em;
-  padding: 0 2px;
+  letter-spacing: 0.06em;
+  /* Inset the label row by half a thumb width so first/last labels
+     sit directly under the thumb at each end of the track */
+  padding: 0 11px;
+  box-sizing: border-box;
 }
 
-/* Over a wallpaper, make slider labels white */
+.unit-slider-labels span {
+  width: 0;
+  text-align: center;
+  /* Each label is centred on its stop — overflow outward */
+  overflow: visible;
+  white-space: nowrap;
+}
+
+/* Over a wallpaper */
 #screen-detail:not(.no-wallpaper) .unit-slider-labels span {
   color: rgba(255,255,255,0.55);
 }

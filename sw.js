@@ -5,12 +5,12 @@
  *  Increment CACHE_VERSION whenever you deploy changes. This forces the old
  *  cache to be cleared and the new files to be fetched fresh.
  *
- *  Current version: milestone-v8
+ *  Current version: milestone-v10
  */
 
 'use strict';
 
-const CACHE_VERSION = 'milestone-v8';
+const CACHE_VERSION = 'milestone-v10';
 
 const PRECACHE_URLS = [
   './',
