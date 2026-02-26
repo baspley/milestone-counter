@@ -27,109 +27,35 @@
 ════════════════════════════════════════════════════ */
 
 const WALLPAPER_THEMES = [
-
-  // ── Health & Recovery ──
   {
-    key:      'health_dawn',
-    category: 'Health & Recovery',
-    label:    'Dawn',
-    css:      'linear-gradient(160deg, #1a0533 0%, #3d1a6e 30%, #c2185b 65%, #ff8a65 100%)',
+    key:   'dawn',
+    label: 'Dawn',
+    css:   'linear-gradient(160deg, #1a0533 0%, #3d1a6e 30%, #c2185b 65%, #ff8a65 100%)',
   },
   {
-    key:      'health_calm',
-    category: 'Health & Recovery',
-    label:    'Calm',
-    css:      'linear-gradient(180deg, #0d1b2a 0%, #1b3a4b 40%, #2d6a4f 75%, #52b788 100%)',
+    key:   'ocean',
+    label: 'Ocean',
+    css:   'linear-gradient(180deg, #001e3c 0%, #0a3d62 25%, #1565c0 55%, #29b6f6 80%, #4dd0e1 100%)',
   },
   {
-    key:      'health_breath',
-    category: 'Health & Recovery',
-    label:    'Breathe',
-    css:      'radial-gradient(ellipse at 50% 40%, #a8d8ea 0%, #4a90a4 45%, #1a3a4a 100%)',
+    key:   'sunset',
+    label: 'Sunset',
+    css:   'linear-gradient(170deg, #1a0533 0%, #7b1fa2 25%, #e91e63 55%, #ff6f00 80%, #ffca28 100%)',
   },
   {
-    key:      'health_sunrise',
-    category: 'Health & Recovery',
-    label:    'Sunrise',
-    css:      'linear-gradient(175deg, #0f0c29 0%, #302b63 40%, #24243e 65%, #f7971e 90%, #ffd200 100%)',
-  },
-
-  // ── Travel & Holidays ──
-  {
-    key:      'travel_ocean',
-    category: 'Travel & Holidays',
-    label:    'Ocean',
-    css:      'linear-gradient(180deg, #001e3c 0%, #0a3d62 25%, #1565c0 55%, #29b6f6 80%, #4dd0e1 100%)',
+    key:   'forest',
+    label: 'Forest',
+    css:   'linear-gradient(160deg, #0a1a0f 0%, #1b5e20 35%, #2e7d32 60%, #558b2f 80%, #8bc34a 100%)',
   },
   {
-    key:      'travel_sunset',
-    category: 'Travel & Holidays',
-    label:    'Sunset',
-    css:      'linear-gradient(170deg, #1a0533 0%, #7b1fa2 25%, #e91e63 55%, #ff6f00 80%, #ffca28 100%)',
+    key:   'gold',
+    label: 'Gold',
+    css:   'linear-gradient(165deg, #1a1200 0%, #3e2800 30%, #b8860b 60%, #ffd700 85%, #fffde7 100%)',
   },
   {
-    key:      'travel_jungle',
-    category: 'Travel & Holidays',
-    label:    'Jungle',
-    css:      'linear-gradient(160deg, #0a1a0f 0%, #1b5e20 35%, #2e7d32 60%, #558b2f 80%, #8bc34a 100%)',
-  },
-  {
-    key:      'travel_sand',
-    category: 'Travel & Holidays',
-    label:    'Desert',
-    css:      'linear-gradient(175deg, #1a0a00 0%, #5d3a1a 30%, #c68642 60%, #f0c080 85%, #fde8bb 100%)',
-  },
-
-  // ── Fitness & Sport ──
-  {
-    key:      'fitness_fire',
-    category: 'Fitness & Sport',
-    label:    'Fire',
-    css:      'linear-gradient(170deg, #0d0d0d 0%, #3e0000 30%, #b71c1c 60%, #ff5722 85%, #ffab40 100%)',
-  },
-  {
-    key:      'fitness_ice',
-    category: 'Fitness & Sport',
-    label:    'Ice',
-    css:      'linear-gradient(155deg, #050a1a 0%, #0d2137 30%, #0277bd 60%, #80d8ff 90%, #e1f5fe 100%)',
-  },
-  {
-    key:      'fitness_night',
-    category: 'Fitness & Sport',
-    label:    'Night Run',
-    css:      'radial-gradient(ellipse at 50% 0%, #1a237e 0%, #000051 50%, #000000 100%)',
-  },
-  {
-    key:      'fitness_storm',
-    category: 'Fitness & Sport',
-    label:    'Storm',
-    css:      'linear-gradient(160deg, #1a1a2e 0%, #16213e 35%, #0f3460 65%, #533483 100%)',
-  },
-
-  // ── Family & Milestones ──
-  {
-    key:      'family_gold',
-    category: 'Family & Milestones',
-    label:    'Gold',
-    css:      'linear-gradient(165deg, #1a1200 0%, #3e2800 30%, #b8860b 60%, #ffd700 85%, #fffde7 100%)',
-  },
-  {
-    key:      'family_rose',
-    category: 'Family & Milestones',
-    label:    'Rose',
-    css:      'linear-gradient(170deg, #1a0010 0%, #4a0030 35%, #ad1457 65%, #f06292 85%, #fce4ec 100%)',
-  },
-  {
-    key:      'family_sky',
-    category: 'Family & Milestones',
-    label:    'Open Sky',
-    css:      'linear-gradient(180deg, #0a1628 0%, #1565c0 40%, #42a5f5 70%, #b3e5fc 100%)',
-  },
-  {
-    key:      'family_aurora',
-    category: 'Family & Milestones',
-    label:    'Aurora',
-    css:      'linear-gradient(155deg, #000814 0%, #001d3d 25%, #003566 45%, #006466 65%, #0ead69 85%, #b5ead7 100%)',
+    key:   'aurora',
+    label: 'Aurora',
+    css:   'linear-gradient(155deg, #000814 0%, #001d3d 25%, #003566 45%, #006466 65%, #0ead69 85%, #b5ead7 100%)',
   },
 ];
 
@@ -401,29 +327,32 @@ function getTimerValues(timer) {
   const toDate   = timer.mode === 'countup' ? now    : target;
 
   const isExpired = toDate < fromDate;
-  if (isExpired) return { months: 0, weeks: 0, days: 0, hours: 0, totalDays: 0, isExpired: true };
+  if (isExpired) return { years: 0, months: 0, weeks: 0, days: 0, totalDays: 0, isExpired: true };
 
-  let months = (toDate.getFullYear() - fromDate.getFullYear()) * 12
-             + (toDate.getMonth() - fromDate.getMonth());
-  if (toDate.getDate() < fromDate.getDate()) months--;
+  // ── Years ──
+  let years = toDate.getFullYear() - fromDate.getFullYear();
+  const afterYears = new Date(fromDate);
+  afterYears.setFullYear(afterYears.getFullYear() + years);
+  if (afterYears > toDate) { years--; afterYears.setFullYear(afterYears.getFullYear() - 1); }
+
+  // ── Months after years ──
+  let months = (toDate.getFullYear() - afterYears.getFullYear()) * 12
+             + (toDate.getMonth()    - afterYears.getMonth());
+  if (toDate.getDate() < afterYears.getDate()) months--;
   if (months < 0) months = 0;
 
-  const afterMonths = new Date(fromDate);
+  const afterMonths = new Date(afterYears);
   afterMonths.setMonth(afterMonths.getMonth() + months);
 
+  // ── Weeks and days after months ──
   const remainingMs   = toDate - afterMonths;
   const remainingDays = Math.floor(remainingMs / (1000 * 60 * 60 * 24));
-
   const weeks = Math.floor(remainingDays / 7);
   const days  = remainingDays % 7;
 
-  const afterDays = new Date(afterMonths);
-  afterDays.setDate(afterDays.getDate() + remainingDays);
-  const hours = Math.floor((toDate - afterDays) / (1000 * 60 * 60));
-
   const totalDays = Math.floor((toDate - fromDate) / (1000 * 60 * 60 * 24));
 
-  return { months, weeks, days, hours, totalDays, isExpired };
+  return { years, months, weeks, days, totalDays, isExpired };
 }
 
 function formatDate(dateStr) {
@@ -644,6 +573,11 @@ async function openDetailScreen(timerId) {
   // The wallpaper is cosmetic; the digits are the point. Loading a photo
   // from IndexedDB can take a moment, and we never want that to block
   // the display from rendering.
+  // Reset slider to Years (position 0) each time a timer is opened
+  sliderPosition = 0;
+  const sliderEl = document.getElementById('unit-slider');
+  if (sliderEl) sliderEl.value = 0;
+
   updateDetailDisplay();
   startTicker();
 
@@ -653,16 +587,80 @@ async function openDetailScreen(timerId) {
   });
 }
 
+/**
+ * The slider position controls which unit is the largest displayed.
+ * 0 = Years, 1 = Months, 2 = Weeks, 3 = Days
+ * At position N, units 0..N-1 are shown as 0, unit N onwards are computed normally.
+ */
+let sliderPosition = 0; // default: show years as largest unit
+
+/**
+ * Compute display values based on slider position.
+ * At position 0 (Years): show years, months, weeks, days normally.
+ * At position 1 (Months): collapse years to 0, recalculate months from full span.
+ * At position 2 (Weeks): collapse years+months to 0, recalculate weeks from full span.
+ * At position 3 (Days): collapse all to 0 except days (totalDays).
+ *
+ * @param {{ years, months, weeks, days, totalDays, isExpired }} vals
+ * @returns {{ dispYears, dispMonths, dispWeeks, dispDays }}
+ */
+function applySlider(vals) {
+  const { years, months, weeks, days, totalDays, isExpired } = vals;
+  if (isExpired) return { dispYears: 0, dispMonths: 0, dispWeeks: 0, dispDays: 0 };
+
+  if (sliderPosition === 0) {
+    // Normal: years is the largest unit
+    return { dispYears: years, dispMonths: months, dispWeeks: weeks, dispDays: days };
+
+  } else if (sliderPosition === 1) {
+    // Months is largest — convert all years into months
+    // Total months elapsed, then weeks and days from remainder
+    const timer = appState.timers.find(t => t.id === appState.activeTimerId);
+    const now    = new Date();
+    const target = new Date(timer.date + 'T00:00:00');
+    const fromDate = timer.mode === 'countup' ? target : now;
+    const toDate   = timer.mode === 'countup' ? now    : target;
+
+    let totalMonths = (toDate.getFullYear() - fromDate.getFullYear()) * 12
+                    + (toDate.getMonth() - fromDate.getMonth());
+    if (toDate.getDate() < fromDate.getDate()) totalMonths--;
+    if (totalMonths < 0) totalMonths = 0;
+
+    const afterMonths = new Date(fromDate);
+    afterMonths.setMonth(afterMonths.getMonth() + totalMonths);
+    const remDays = Math.floor((toDate - afterMonths) / (1000 * 60 * 60 * 24));
+
+    return {
+      dispYears:  0,
+      dispMonths: totalMonths,
+      dispWeeks:  Math.floor(remDays / 7),
+      dispDays:   remDays % 7,
+    };
+
+  } else if (sliderPosition === 2) {
+    // Weeks is largest — express everything in weeks + remaining days
+    const totalWeeks = Math.floor(totalDays / 7);
+    const remDays    = totalDays % 7;
+    return { dispYears: 0, dispMonths: 0, dispWeeks: totalWeeks, dispDays: remDays };
+
+  } else {
+    // Days is largest — just show total days
+    return { dispYears: 0, dispMonths: 0, dispWeeks: 0, dispDays: totalDays };
+  }
+}
+
 function updateDetailDisplay() {
   const timer = appState.timers.find(t => t.id === appState.activeTimerId);
   if (!timer) return;
 
-  const { months, weeks, days, hours, totalDays, isExpired } = getTimerValues(timer);
+  const vals = getTimerValues(timer);
+  const { totalDays, isExpired } = vals;
+  const { dispYears, dispMonths, dispWeeks, dispDays } = applySlider(vals);
 
-  document.getElementById('disp-months').textContent = isExpired ? '—'  : String(months);
-  document.getElementById('disp-weeks').textContent  = isExpired ? '--' : String(weeks);
-  document.getElementById('disp-days').textContent   = isExpired ? '--' : String(days);
-  document.getElementById('disp-hours').textContent  = isExpired ? '--' : String(hours);
+  document.getElementById('disp-years').textContent  = isExpired ? '—'  : String(dispYears);
+  document.getElementById('disp-months').textContent = isExpired ? '--' : String(dispMonths);
+  document.getElementById('disp-weeks').textContent  = isExpired ? '--' : String(dispWeeks);
+  document.getElementById('disp-days').textContent   = isExpired ? '--' : String(dispDays);
 
   const nextMs = getNextMilestone(timer, totalDays);
   const hintEl = document.getElementById('next-milestone-hint');
@@ -825,45 +823,30 @@ async function buildWallpaperPicker(timer) {
 }
 
 /**
- * Populate the theme grid with one swatch per built-in theme, grouped by category.
+ * Populate the theme grid with one swatch per built-in theme (no categories).
  */
 function buildThemeGrid() {
   const gridEl = document.getElementById('wp-theme-grid');
   gridEl.innerHTML = '';
 
-  // Group themes by category
-  const categories = [...new Set(WALLPAPER_THEMES.map(t => t.category))];
+  WALLPAPER_THEMES.forEach(theme => {
+    const swatch = document.createElement('button');
+    swatch.type = 'button';
+    swatch.className = 'wp-theme-item';
+    swatch.dataset.themeKey = theme.key;
+    swatch.setAttribute('aria-label', theme.label);
+    swatch.style.background = theme.css;
+    swatch.innerHTML = `<span class="wp-selected-tick" aria-hidden="true">✓</span><span class="wp-theme-label">${theme.label}</span>`;
 
-  categories.forEach(cat => {
-    // Category label
-    const catLabel = document.createElement('p');
-    catLabel.className = 'wp-category-label';
-    catLabel.textContent = cat;
-    // Span all columns
-    catLabel.style.gridColumn = '1 / -1';
-    gridEl.appendChild(catLabel);
-
-    // Theme swatches for this category
-    WALLPAPER_THEMES.filter(t => t.category === cat).forEach(theme => {
-      const swatch = document.createElement('button');
-      swatch.type = 'button';
-      swatch.className = 'wp-theme-item';
-      swatch.dataset.themeKey = theme.key;
-      swatch.setAttribute('aria-label', theme.label);
-      swatch.style.background = theme.css;
-      swatch.innerHTML = `<span class="wp-selected-tick" aria-hidden="true">✓</span>`;
-
-      swatch.addEventListener('click', () => {
-        formWallpaperSelection = theme.key;
-        formPendingPhotoBlob   = null; // photo is deselected when a theme is picked
-        hidePhotoPreview();
-        updateThemeGridSelection();
-        // Switch to the built-in tab if we're not already there
-        switchWallpaperTab('builtin');
-      });
-
-      gridEl.appendChild(swatch);
+    swatch.addEventListener('click', () => {
+      formWallpaperSelection = theme.key;
+      formPendingPhotoBlob   = null;
+      hidePhotoPreview();
+      updateThemeGridSelection();
+      switchWallpaperTab('builtin');
     });
+
+    gridEl.appendChild(swatch);
   });
 }
 
@@ -1041,12 +1024,21 @@ function renderMessageRows(messages, timer = null) {
   messages.forEach((msg, index) => {
     const row = document.createElement('div');
     row.className = 'message-row';
-    const def = msg.milestoneKey ? resolveMilestone(msg.milestoneKey, timer || {}) : null;
-    const milestoneName = def ? `${def.badge} ${def.label}` : 'Unknown milestone';
+
+    // Build trigger label — either a milestone name or a specific date
+    let triggerLabel;
+    if (msg.triggerType === 'date' && msg.triggerDate) {
+      triggerLabel = `📅 ${formatDate(msg.triggerDate)}`;
+    } else if (msg.milestoneKey) {
+      const def = resolveMilestone(msg.milestoneKey, timer || {});
+      triggerLabel = def ? `${def.badge} ${def.label}` : 'Unknown milestone';
+    } else {
+      triggerLabel = 'Unknown trigger';
+    }
 
     row.innerHTML = `
       <div class="message-row-header">
-        <span class="message-row-milestone">${milestoneName}</span>
+        <span class="message-row-milestone">${triggerLabel}</span>
         <button type="button" class="custom-milestone-remove message-remove-btn" data-index="${index}" aria-label="Remove message">✕</button>
       </div>
       <p class="message-row-text">${escapeHtml(msg.text)}</p>
@@ -1075,28 +1067,51 @@ function setFormMessages(messages, timer = null) {
   renderMessageRows(messages, timer);
 }
 
-/** Add a new message from the form inputs. */
+/**
+ * Add a new message from the form inputs.
+ * Supports two trigger types:
+ *   - 'milestone': tied to a preset or custom milestone threshold
+ *   - 'date': tied to a specific calendar date
+ */
 function addMessageToForm() {
-  const textEl       = document.getElementById('input-message-text');
-  const daysEl       = document.getElementById('input-message-days');
-  const milestoneEl  = document.getElementById('input-message-milestone');
+  const textEl        = document.getElementById('input-message-text');
+  const daysEl        = document.getElementById('input-message-days');
+  const milestoneEl   = document.getElementById('input-message-milestone');
+  const triggerDateEl = document.getElementById('input-message-date');
 
-  const text         = textEl.value.trim();
-  const daysBefore   = parseInt(daysEl.value, 10);
+  const text        = textEl.value.trim();
+  const daysBefore  = parseInt(daysEl.value, 10);
   const milestoneKey = milestoneEl.value;
+  const triggerDate  = triggerDateEl ? triggerDateEl.value : '';
 
-  if (!text)         { alert('Please enter a message.'); return; }
-  if (!milestoneKey) { alert('Please choose a milestone.'); return; }
+  // Determine trigger type based on which field is filled
+  const hasMilestone = !!milestoneKey;
+  const hasDate      = !!triggerDate;
+
+  if (!text) { alert('Please enter a message.'); return; }
   if (!daysBefore || daysBefore < 1) { alert('Please enter how many days before to start showing this message.'); return; }
+  if (!hasMilestone && !hasDate) { alert('Please choose a milestone or enter a date.'); return; }
+
+  const entry = { text, daysBefore };
+
+  if (hasDate) {
+    // Date trigger takes priority if both are filled
+    entry.triggerType = 'date';
+    entry.triggerDate = triggerDate;
+  } else {
+    entry.triggerType   = 'milestone';
+    entry.milestoneKey  = milestoneKey;
+  }
 
   const current = getFormMessages();
-  current.push({ text, daysBefore, milestoneKey });
+  current.push(entry);
   setFormMessages(current, formEditingTimer);
 
   // Clear inputs
-  textEl.value      = '';
-  daysEl.value      = '';
-  milestoneEl.value = '';
+  textEl.value        = '';
+  daysEl.value        = '';
+  milestoneEl.value   = '';
+  if (triggerDateEl) triggerDateEl.value = '';
   textEl.focus();
 }
 
@@ -1531,43 +1546,66 @@ function onEditorPointerUp(e) {
  * @param {number} totalDays - elapsed (countup) or remaining (countdown)
  * @returns {{ text: string, daysUntil: number, milestoneName: string }|null}
  */
+/**
+ * Compute which message (if any) should be active right now.
+ * Handles two trigger types:
+ *   - 'milestone': counts days from a milestone threshold
+ *   - 'date':      counts days from a specific calendar date
+ *
+ * Returns the message with the smallest daysUntil (most imminent).
+ *
+ * @param {object} timer
+ * @param {number} totalDays - elapsed (countup) or remaining (countdown)
+ * @returns {{ text, daysUntil, triggerLabel }|null}
+ */
 function getActiveMessage(timer, totalDays) {
   const messages = timer.messages || [];
   if (messages.length === 0) return null;
 
-  let best = null;
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+
+  let best          = null;
   let bestDaysUntil = Infinity;
 
   for (const msg of messages) {
-    if (!msg.text || !msg.milestoneKey) continue;
-
-    const def = resolveMilestone(msg.milestoneKey, timer);
-    if (!def) continue;
+    if (!msg.text) continue;
 
     let daysUntil;
+    let triggerLabel;
 
-    if (timer.mode === 'countup') {
-      // For count-up: milestone fires when elapsed days reach def.days
-      // daysUntil = how many more days until that threshold
-      daysUntil = def.days - totalDays;
+    if (msg.triggerType === 'date' && msg.triggerDate) {
+      // ── Date trigger ──
+      // daysUntil = days from today until the trigger date
+      const triggerDay = new Date(msg.triggerDate + 'T00:00:00');
+      daysUntil    = Math.round((triggerDay - today) / (1000 * 60 * 60 * 24));
+      triggerLabel = `📅 ${formatDate(msg.triggerDate)}`;
+
+    } else if (msg.milestoneKey) {
+      // ── Milestone trigger ──
+      const def = resolveMilestone(msg.milestoneKey, timer);
+      if (!def) continue;
+
+      if (timer.mode === 'countup') {
+        // Count-up: how many more days until we reach this milestone threshold
+        daysUntil = def.days - totalDays;
+      } else {
+        // Countdown: how many days until we have exactly def.days remaining
+        daysUntil = totalDays - def.days;
+        if (daysUntil < 0) daysUntil = 0;
+      }
+      triggerLabel = `${def.badge} ${def.label}`;
+
     } else {
-      // For countdown: totalDays = remaining days
-      // daysUntil = remaining days (same as totalDays for this milestone)
-      daysUntil = totalDays - def.days;
-      if (daysUntil < 0) daysUntil = 0;
+      continue; // No valid trigger
     }
 
-    // Show the message if we're within the daysBefore window
-    // daysUntil can be 0 (today) to msg.daysBefore (start of window)
+    // Show the message within the window: from daysBefore days away down to 0 (the day itself)
     const inWindow = daysUntil >= 0 && daysUntil <= msg.daysBefore;
 
     if (inWindow && daysUntil < bestDaysUntil) {
       bestDaysUntil = daysUntil;
-      best = {
-        text:          msg.text,
-        daysUntil,
-        milestoneName: `${def.badge} ${def.label}`,
-      };
+      best = { text: msg.text, daysUntil, triggerLabel };
     }
   }
 
@@ -1593,7 +1631,7 @@ function updateDetailMessage(timer, totalDays) {
         ? 'Tomorrow'
         : `${active.daysUntil} days to go`;
 
-    el.innerHTML = `<span class="detail-message-text">${escapeHtml(active.text)}</span><span class="detail-message-when">${dayStr} — ${active.milestoneName}</span>`;
+    el.innerHTML = `<span class="detail-message-text">${escapeHtml(active.text)}</span><span class="detail-message-when">${dayStr} — ${active.triggerLabel}</span>`;
     el.classList.remove('hidden');
   } else {
     el.classList.add('hidden');
@@ -1765,8 +1803,33 @@ document.addEventListener('DOMContentLoaded', () => {
   editorViewport.addEventListener('pointerup',   onEditorPointerUp);
   editorViewport.addEventListener('pointercancel', onEditorPointerUp);
 
+  // ── Unit slider ──
+  document.getElementById('unit-slider').addEventListener('input', (e) => {
+    sliderPosition = parseInt(e.target.value, 10);
+    updateDetailDisplay();
+  });
+
   // ── Messages ──
   document.getElementById('btn-add-message').addEventListener('click', addMessageToForm);
+
+  // Toggle between milestone and date trigger modes in message builder
+  document.querySelectorAll('.msg-trigger-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      document.querySelectorAll('.msg-trigger-btn').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+
+      const isDate = btn.dataset.trigger === 'date';
+      document.getElementById('message-date-wrap').classList.toggle('hidden', !isDate);
+      document.getElementById('input-message-milestone').classList.toggle('hidden', isDate);
+
+      // Clear the inactive field to avoid stale values being picked up by addMessageToForm
+      if (isDate) {
+        document.getElementById('input-message-milestone').value = '';
+      } else {
+        document.getElementById('input-message-date').value = '';
+      }
+    });
+  });
 
   // ── Custom milestones ──
   document.getElementById('btn-add-custom-milestone').addEventListener('click', addCustomMilestoneToForm);

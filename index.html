@@ -65,26 +65,45 @@
       <p id="detail-mode-label" class="mode-label"></p>
       <p id="detail-target-date" class="target-date"></p>
 
-      <!-- Hero display: months · weeks · days · hours -->
+      <!-- Hero display: years · months · weeks · days -->
       <div class="countdown-hero" id="countdown-hero" aria-live="polite" aria-atomic="true">
-        <div class="time-block">
+        <div class="time-block" id="block-years">
+          <span id="disp-years" class="time-value">0</span>
+          <span class="time-label">Years</span>
+        </div>
+        <div class="time-separator">·</div>
+        <div class="time-block" id="block-months">
           <span id="disp-months" class="time-value">0</span>
-          <span class="time-label">months</span>
+          <span class="time-label">Months</span>
         </div>
         <div class="time-separator">·</div>
-        <div class="time-block">
+        <div class="time-block" id="block-weeks">
           <span id="disp-weeks" class="time-value">0</span>
-          <span class="time-label">weeks</span>
+          <span class="time-label">Weeks</span>
         </div>
         <div class="time-separator">·</div>
-        <div class="time-block">
+        <div class="time-block" id="block-days">
           <span id="disp-days" class="time-value">0</span>
-          <span class="time-label">days</span>
+          <span class="time-label">Days</span>
         </div>
-        <div class="time-separator">·</div>
-        <div class="time-block">
-          <span id="disp-hours" class="time-value">0</span>
-          <span class="time-label">hours</span>
+      </div>
+
+      <!-- Unit slider: drag to choose the largest unit displayed.
+           Position 0=Years, 1=Months, 2=Weeks, 3=Days.
+           Units to the left of the chosen position show as 0. -->
+      <div class="unit-slider-wrap">
+        <input
+          type="range"
+          id="unit-slider"
+          class="unit-slider"
+          min="0" max="3" step="1" value="0"
+          aria-label="Largest unit to display"
+        />
+        <div class="unit-slider-labels" aria-hidden="true">
+          <span>Years</span>
+          <span>Months</span>
+          <span>Weeks</span>
+          <span>Days</span>
         </div>
       </div>
 
@@ -214,6 +233,8 @@
 
       <!-- Message builder inputs -->
       <div class="message-builder">
+
+        <!-- Message text -->
         <textarea
           id="input-message-text"
           class="form-input message-text-input"
@@ -221,6 +242,7 @@
           rows="2"
         ></textarea>
 
+        <!-- Days before -->
         <div class="message-builder-row">
           <label class="message-builder-label">Show from</label>
           <input
@@ -228,15 +250,33 @@
             class="form-input message-days-input"
             type="number"
             min="1"
-            max="365"
+            max="3650"
             placeholder="e.g. 14"
           />
           <label class="message-builder-label">days before</label>
         </div>
 
+        <!-- Trigger type toggle -->
+        <div class="message-trigger-toggle" role="group" aria-label="Trigger type">
+          <button type="button" class="msg-trigger-btn active" data-trigger="milestone">Milestone</button>
+          <button type="button" class="msg-trigger-btn" data-trigger="date">Specific date</button>
+        </div>
+
+        <!-- Milestone picker (shown when trigger=milestone) -->
         <select id="input-message-milestone" class="form-input message-milestone-select">
           <option value="">— choose a milestone —</option>
         </select>
+
+        <!-- Date picker (shown when trigger=date, hidden by default) -->
+        <div id="message-date-wrap" class="hidden">
+          <input
+            id="input-message-date"
+            class="form-input"
+            type="date"
+            aria-label="Trigger date"
+          />
+          <p class="form-hint" style="margin-top:0.4rem">Message will appear from the set number of days before this date.</p>
+        </div>
 
         <button type="button" id="btn-add-message" class="add-custom-btn message-add-btn">Add message</button>
       </div>
