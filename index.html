@@ -89,6 +89,9 @@
       </div>
 
       <p id="next-milestone-hint" class="next-milestone-hint"></p>
+
+      <!-- Message displayed when within a message window -->
+      <div id="detail-message" class="detail-message hidden"></div>
     </div>
   </div>
 
@@ -201,6 +204,46 @@
       </div>
       <div id="custom-milestone-list" class="custom-milestone-list"></div>
 
+      <!-- ── Messages ─────────────────────────────────
+           Each message is shown on the detail screen
+           below the time display, from a set number of
+           days before a chosen milestone.
+      ── -->
+      <label class="form-label">Messages</label>
+      <p class="form-hint">Add a message to display on the timer screen from a chosen number of days before a milestone — e.g. "Buy a card and gift" from 14 days before the 1 Year mark.</p>
+
+      <!-- Message builder inputs -->
+      <div class="message-builder">
+        <textarea
+          id="input-message-text"
+          class="form-input message-text-input"
+          placeholder="e.g. Buy a card and gift for wife"
+          rows="2"
+        ></textarea>
+
+        <div class="message-builder-row">
+          <label class="message-builder-label">Show from</label>
+          <input
+            id="input-message-days"
+            class="form-input message-days-input"
+            type="number"
+            min="1"
+            max="365"
+            placeholder="e.g. 14"
+          />
+          <label class="message-builder-label">days before</label>
+        </div>
+
+        <select id="input-message-milestone" class="form-input message-milestone-select">
+          <option value="">— choose a milestone —</option>
+        </select>
+
+        <button type="button" id="btn-add-message" class="add-custom-btn message-add-btn">Add message</button>
+      </div>
+
+      <!-- List of added messages -->
+      <div id="message-list" class="message-list"></div>
+
       <div class="form-actions">
         <button type="submit" id="btn-form-save" class="primary-btn">Save Timer</button>
         <button type="button" id="btn-form-delete" class="danger-btn hidden">Delete Timer</button>
@@ -226,6 +269,7 @@
       <button id="btn-close-milestone" class="primary-btn milestone-close-btn">Brilliant ✓</button>
     </div>
   </div>
+
 
   <!-- ═══════════════════════════════════════════════
        OVERLAY: Photo position & zoom editor

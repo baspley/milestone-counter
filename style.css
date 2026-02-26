@@ -1114,3 +1114,327 @@ body[data-theme="dark"] .form-input[type="date"]::-webkit-calendar-picker-indica
   background: var(--accent);
   color: #000;
 }
+
+
+/* ══════════════════════════════════════
+   REMINDER SYSTEM
+══════════════════════════════════════ */
+
+/* ── Milestone item wrapper (checkbox + reminder panel) ── */
+.milestone-item {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+}
+
+.milestone-check-row {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+/* Make the checkbox label fill available space */
+.milestone-check-row .milestone-check-label {
+  flex: 1;
+}
+
+/* Bell button to toggle reminder panel */
+.reminder-toggle-btn {
+  background: transparent;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  width: 36px;
+  height: 36px;
+  font-size: 1rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--text-muted);
+  flex-shrink: 0;
+  touch-action: manipulation;
+  transition: background var(--transition), border-color var(--transition);
+}
+.reminder-toggle-btn.has-reminder {
+  border-color: var(--accent);
+  background: var(--accent-glow);
+}
+.reminder-toggle-btn:active {
+  background: var(--surface-2);
+}
+
+/* ── Reminder panel (expands below the checkbox row) ── */
+.reminder-panel {
+  display: none;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-top: none;
+  border-radius: 0 0 var(--radius) var(--radius);
+  overflow: hidden;
+  margin-bottom: 0.25rem;
+}
+.reminder-panel.open {
+  display: block;
+}
+
+.reminder-panel-inner {
+  padding: 0.75rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.reminder-field-label {
+  font-size: 0.72rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--text-muted);
+}
+
+.reminder-message-input {
+  width: 100%;
+  padding: 0.6rem 0.75rem;
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  color: var(--text);
+  font-size: 0.9rem;
+  font-family: var(--font-ui);
+  resize: none;
+  outline: none;
+  transition: border-color var(--transition);
+}
+.reminder-message-input:focus {
+  border-color: var(--accent);
+}
+
+.reminder-days-row {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.reminder-days-input {
+  width: 80px;
+  flex-shrink: 0;
+  -moz-appearance: textfield;
+}
+.reminder-days-input::-webkit-inner-spin-button,
+.reminder-days-input::-webkit-outer-spin-button { -webkit-appearance: none; }
+
+.reminder-days-unit {
+  font-size: 0.85rem;
+  color: var(--text-muted);
+}
+
+.reminder-clear-btn {
+  background: transparent;
+  border: none;
+  color: var(--danger);
+  font-size: 0.8rem;
+  padding: 0;
+  text-align: left;
+  touch-action: manipulation;
+}
+
+/* ── Reminder card overlay ── */
+.reminder-overlay {
+  position: fixed;
+  inset: 0;
+  background: var(--overlay-bg);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--gap-lg);
+  z-index: 900; /* below milestone overlay (1000) but above everything else */
+  animation: overlay-fade-in 0.3s ease forwards;
+  padding-bottom: calc(var(--gap-lg) + var(--safe-bottom));
+}
+.reminder-overlay.hidden { display: none; }
+
+.reminder-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  padding: var(--gap-xl) var(--gap-lg);
+  width: 100%;
+  max-width: 380px;
+  text-align: center;
+  position: relative;
+  overflow: hidden;
+  animation: card-rise 0.3s cubic-bezier(0.34, 1.4, 0.64, 1) forwards;
+}
+.reminder-card::before {
+  content: '';
+  position: absolute;
+  top: 0; left: 0; right: 0;
+  height: 3px;
+  /* Distinct colour from milestone card — blue/teal instead of amber */
+  background: #4ecf8c;
+}
+
+.reminder-icon {
+  font-size: 2.5rem;
+  margin-bottom: 0.75rem;
+}
+
+.reminder-milestone-label {
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--text-muted);
+  margin-bottom: 0.25rem;
+}
+
+.reminder-when {
+  font-family: var(--font-digits);
+  font-size: 1.4rem;
+  font-weight: 500;
+  color: #4ecf8c;
+  margin-bottom: var(--gap);
+}
+
+.reminder-message {
+  font-size: 1rem;
+  color: var(--text);
+  line-height: 1.6;
+  margin-bottom: var(--gap-lg);
+}
+
+.reminder-close-btn {
+  max-width: 200px;
+  margin: 0 auto;
+  background: #4ecf8c;
+  color: #0a1a12;
+}
+
+
+/* ══════════════════════════════════════
+   MESSAGE SYSTEM
+══════════════════════════════════════ */
+
+/* ── Detail screen message display ── */
+.detail-message {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.3rem;
+  margin-top: var(--gap-lg);
+  padding: 0 var(--gap-lg);
+  text-align: center;
+}
+.detail-message.hidden { display: none; }
+
+.detail-message-text {
+  font-size: 1.05rem;
+  color: var(--text);
+  line-height: 1.5;
+  font-weight: 400;
+}
+
+/* Over a wallpaper, message text should be white */
+#screen-detail:not(.no-wallpaper) .detail-message-text {
+  color: #fff;
+  text-shadow: 0 1px 4px rgba(0,0,0,0.6);
+}
+
+.detail-message-when {
+  font-size: 0.75rem;
+  color: var(--accent);
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  font-family: var(--font-digits);
+}
+#screen-detail:not(.no-wallpaper) .detail-message-when {
+  color: #ffd080;
+  text-shadow: 0 1px 3px rgba(0,0,0,0.5);
+}
+
+/* ── Message builder in form ── */
+.message-builder {
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  padding: var(--gap);
+}
+
+.message-text-input {
+  resize: none;
+  font-family: var(--font-ui);
+}
+
+.message-builder-row {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.message-builder-label {
+  font-size: 0.85rem;
+  color: var(--text-muted);
+  white-space: nowrap;
+}
+
+.message-days-input {
+  width: 72px;
+  flex-shrink: 0;
+  -moz-appearance: textfield;
+}
+.message-days-input::-webkit-inner-spin-button,
+.message-days-input::-webkit-outer-spin-button { -webkit-appearance: none; }
+
+.message-milestone-select {
+  -webkit-appearance: none;
+  appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%236b6b88' stroke-width='1.5' fill='none' stroke-linecap='round'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 0.75rem center;
+  padding-right: 2rem;
+}
+
+.message-add-btn {
+  align-self: flex-start;
+}
+
+/* ── Message list (added messages) ── */
+.message-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.message-row {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 0.65rem 0.75rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.message-row-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.message-row-milestone {
+  font-size: 0.78rem;
+  color: var(--accent);
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+.message-row-text {
+  font-size: 0.9rem;
+  color: var(--text);
+  line-height: 1.4;
+}
+
+.message-row-meta {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+}

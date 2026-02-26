@@ -679,6 +679,9 @@ function updateDetailDisplay() {
   }
 
   checkMilestones(timer, totalDays);
+
+  // Show active message on detail screen
+  updateDetailMessage(timer, totalDays);
 }
 
 function checkMilestones(timer, totalDays) {
@@ -762,9 +765,11 @@ let formPendingPhotoBlob = null;
 let formPendingPhotoTransform = null;
 
 function openFormScreen(timerId = null) {
-  editingTimerId = timerId;
-  const isEditing = timerId !== null;
-  const timer     = isEditing ? appState.timers.find(t => t.id === timerId) : null;
+  editingTimerId    = timerId;
+  formEditingTimer  = null; // will be set below
+  const isEditing   = timerId !== null;
+  const timer       = isEditing ? appState.timers.find(t => t.id === timerId) : null;
+  formEditingTimer  = timer;
 
   document.getElementById('form-screen-title').textContent = isEditing ? 'Edit Timer' : 'New Timer';
   document.getElementById('input-name').value = timer ? timer.name : '';
@@ -777,6 +782,10 @@ function openFormScreen(timerId = null) {
 
   buildMilestoneCheckboxes(timer ? (timer.milestoneKeys || []) : []);
   setFormCustomMilestones(timer ? (timer.customMilestones || []) : []);
+  setFormMessages(timer ? (timer.messages || []) : [], timer);
+  // Re-populate the milestone dropdown for the message builder
+  const milestoneDropdown = document.getElementById('input-message-milestone');
+  if (milestoneDropdown) milestoneDropdown.innerHTML = buildMilestoneOptions(timer);
   document.getElementById('btn-form-delete').classList.toggle('hidden', !isEditing);
 
   // Wallpaper state
@@ -903,6 +912,10 @@ function hidePhotoPreview() {
 
 // ── Milestone checkbox builder ──
 
+/**
+ * Build the preset milestone checkboxes.
+ * @param {string[]} selectedKeys
+ */
 function buildMilestoneCheckboxes(selectedKeys = []) {
   const container = document.getElementById('milestone-checkboxes');
   container.innerHTML = '';
@@ -916,6 +929,7 @@ function buildMilestoneCheckboxes(selectedKeys = []) {
     container.appendChild(label);
   });
 }
+
 
 // ── Custom milestone list ──
 
@@ -969,6 +983,126 @@ function addCustomMilestoneToForm() {
   input.focus();
 }
 
+
+/* ════════════════════════════════════════════════════
+   MESSAGE SYSTEM FORM HELPERS
+
+   Each timer can have multiple messages. Each message:
+     text:       string  — the message to display
+     daysBefore: number  — start showing this many days
+                           before the milestone date
+     milestoneKey: string — which milestone it's tied to
+                            (used to compute the target date)
+
+   Messages are stored on the timer as:
+     messages: [{ text, daysBefore, milestoneKey }]
+
+   On the detail screen, we compute which messages are
+   currently active and display the most relevant one
+   (closest upcoming milestone) below the time display.
+════════════════════════════════════════════════════ */
+
+/**
+ * Build the dropdown options for the milestone picker in the message form.
+ * Includes both preset and custom milestones for the current timer.
+ * @param {object|null} timer
+ * @returns {string} HTML option elements
+ */
+function buildMilestoneOptions(timer) {
+  let options = '<option value="">— choose a milestone —</option>';
+
+  MILESTONE_DEFINITIONS.forEach(def => {
+    options += `<option value="${def.key}">${def.badge} ${def.label}</option>`;
+  });
+
+  if (timer && timer.customMilestones) {
+    timer.customMilestones.forEach(cm => {
+      options += `<option value="${cm.key}">🎯 Day ${cm.days}</option>`;
+    });
+  }
+
+  return options;
+}
+
+/**
+ * Render the message rows in the form.
+ * @param {Array} messages
+ * @param {object|null} timer
+ */
+function renderMessageRows(messages, timer = null) {
+  const container = document.getElementById('message-list');
+  container.innerHTML = '';
+
+  if (messages.length === 0) {
+    container.innerHTML = '<p class="custom-milestone-empty">No messages added yet</p>';
+    return;
+  }
+
+  messages.forEach((msg, index) => {
+    const row = document.createElement('div');
+    row.className = 'message-row';
+    const def = msg.milestoneKey ? resolveMilestone(msg.milestoneKey, timer || {}) : null;
+    const milestoneName = def ? `${def.badge} ${def.label}` : 'Unknown milestone';
+
+    row.innerHTML = `
+      <div class="message-row-header">
+        <span class="message-row-milestone">${milestoneName}</span>
+        <button type="button" class="custom-milestone-remove message-remove-btn" data-index="${index}" aria-label="Remove message">✕</button>
+      </div>
+      <p class="message-row-text">${escapeHtml(msg.text)}</p>
+      <p class="message-row-meta">Show from ${msg.daysBefore} day${msg.daysBefore === 1 ? '' : 's'} before</p>
+    `;
+
+    row.querySelector('.message-remove-btn').addEventListener('click', () => {
+      const current = getFormMessages();
+      current.splice(index, 1);
+      setFormMessages(current, timer);
+    });
+
+    container.appendChild(row);
+  });
+}
+
+/** Get current message list from the form data attribute. */
+function getFormMessages() {
+  const raw = document.getElementById('message-list').dataset.messages;
+  return raw ? JSON.parse(raw) : [];
+}
+
+/** Set message list and re-render. */
+function setFormMessages(messages, timer = null) {
+  document.getElementById('message-list').dataset.messages = JSON.stringify(messages);
+  renderMessageRows(messages, timer);
+}
+
+/** Add a new message from the form inputs. */
+function addMessageToForm() {
+  const textEl       = document.getElementById('input-message-text');
+  const daysEl       = document.getElementById('input-message-days');
+  const milestoneEl  = document.getElementById('input-message-milestone');
+
+  const text         = textEl.value.trim();
+  const daysBefore   = parseInt(daysEl.value, 10);
+  const milestoneKey = milestoneEl.value;
+
+  if (!text)         { alert('Please enter a message.'); return; }
+  if (!milestoneKey) { alert('Please choose a milestone.'); return; }
+  if (!daysBefore || daysBefore < 1) { alert('Please enter how many days before to start showing this message.'); return; }
+
+  const current = getFormMessages();
+  current.push({ text, daysBefore, milestoneKey });
+  setFormMessages(current, formEditingTimer);
+
+  // Clear inputs
+  textEl.value      = '';
+  daysEl.value      = '';
+  milestoneEl.value = '';
+  textEl.focus();
+}
+
+/** Reference to the timer being edited — needed for milestone dropdown in messages. */
+let formEditingTimer = null;
+
 // ── Form read / submit / delete ──
 
 function readFormValues() {
@@ -979,10 +1113,11 @@ function readFormValues() {
   if (!name) { alert('Please give your timer a name.'); return null; }
   if (!date) { alert('Please choose a date.'); return null; }
 
-  const milestoneKeys    = Array.from(document.querySelectorAll('#milestone-checkboxes input:checked')).map(cb => cb.value);
+  const milestoneKeys    = Array.from(document.querySelectorAll('#milestone-checkboxes input[type="checkbox"]:checked')).map(cb => cb.value);
   const customMilestones = getFormCustomMilestones();
+  const messages         = getFormMessages();
 
-  return { name, date, mode, milestoneKeys, customMilestones, wallpaper: formWallpaperSelection };
+  return { name, date, mode, milestoneKeys, customMilestones, messages, wallpaper: formWallpaperSelection };
 }
 
 async function handleFormSubmit(event) {
@@ -1001,6 +1136,7 @@ async function handleFormSubmit(event) {
         ...existing,
         ...values,
         photoTransform:  values.wallpaper === 'photo' ? (formPendingPhotoTransform || existing.photoTransform || null) : null,
+        messages:        values.messages,
         shownMilestones: dateChanged ? [] : existing.shownMilestones,
       };
     }
@@ -1015,6 +1151,7 @@ async function handleFormSubmit(event) {
       photoTransform:   values.wallpaper === 'photo' ? formPendingPhotoTransform : null,
       milestoneKeys:    values.milestoneKeys,
       customMilestones: values.customMilestones,
+      messages:         values.messages,
       shownMilestones:  [],
     };
     appState.timers.push(newTimer);
@@ -1371,6 +1508,98 @@ function onEditorPointerUp(e) {
   }
 }
 
+
+/* ════════════════════════════════════════════════════
+   11b. DETAIL SCREEN MESSAGE DISPLAY
+
+   Each timer can have messages tied to milestones.
+   When the app is open and we're within the "daysBefore"
+   window before a milestone, the message is shown on
+   the detail screen below the time display.
+
+   Only one message is shown at a time — the one tied
+   to the nearest upcoming milestone.
+════════════════════════════════════════════════════ */
+
+/**
+ * Compute which message (if any) should be displayed right now.
+ * Returns the most relevant message — the one tied to the
+ * nearest milestone that hasn't passed yet and is within
+ * its daysBefore window.
+ *
+ * @param {object} timer
+ * @param {number} totalDays - elapsed (countup) or remaining (countdown)
+ * @returns {{ text: string, daysUntil: number, milestoneName: string }|null}
+ */
+function getActiveMessage(timer, totalDays) {
+  const messages = timer.messages || [];
+  if (messages.length === 0) return null;
+
+  let best = null;
+  let bestDaysUntil = Infinity;
+
+  for (const msg of messages) {
+    if (!msg.text || !msg.milestoneKey) continue;
+
+    const def = resolveMilestone(msg.milestoneKey, timer);
+    if (!def) continue;
+
+    let daysUntil;
+
+    if (timer.mode === 'countup') {
+      // For count-up: milestone fires when elapsed days reach def.days
+      // daysUntil = how many more days until that threshold
+      daysUntil = def.days - totalDays;
+    } else {
+      // For countdown: totalDays = remaining days
+      // daysUntil = remaining days (same as totalDays for this milestone)
+      daysUntil = totalDays - def.days;
+      if (daysUntil < 0) daysUntil = 0;
+    }
+
+    // Show the message if we're within the daysBefore window
+    // daysUntil can be 0 (today) to msg.daysBefore (start of window)
+    const inWindow = daysUntil >= 0 && daysUntil <= msg.daysBefore;
+
+    if (inWindow && daysUntil < bestDaysUntil) {
+      bestDaysUntil = daysUntil;
+      best = {
+        text:          msg.text,
+        daysUntil,
+        milestoneName: `${def.badge} ${def.label}`,
+      };
+    }
+  }
+
+  return best;
+}
+
+/**
+ * Update the message display on the detail screen.
+ * Shows the active message below the time display, or hides it.
+ * @param {object} timer
+ * @param {number} totalDays
+ */
+function updateDetailMessage(timer, totalDays) {
+  const el = document.getElementById('detail-message');
+  if (!el) return;
+
+  const active = getActiveMessage(timer, totalDays);
+
+  if (active) {
+    const dayStr = active.daysUntil === 0
+      ? 'Today'
+      : active.daysUntil === 1
+        ? 'Tomorrow'
+        : `${active.daysUntil} days to go`;
+
+    el.innerHTML = `<span class="detail-message-text">${escapeHtml(active.text)}</span><span class="detail-message-when">${dayStr} — ${active.milestoneName}</span>`;
+    el.classList.remove('hidden');
+  } else {
+    el.classList.add('hidden');
+  }
+}
+
 /* ════════════════════════════════════════════════════
    12. THEME (light/dark)
 ════════════════════════════════════════════════════ */
@@ -1535,6 +1764,9 @@ document.addEventListener('DOMContentLoaded', () => {
   editorViewport.addEventListener('pointermove', onEditorPointerMove);
   editorViewport.addEventListener('pointerup',   onEditorPointerUp);
   editorViewport.addEventListener('pointercancel', onEditorPointerUp);
+
+  // ── Messages ──
+  document.getElementById('btn-add-message').addEventListener('click', addMessageToForm);
 
   // ── Custom milestones ──
   document.getElementById('btn-add-custom-milestone').addEventListener('click', addCustomMilestoneToForm);
