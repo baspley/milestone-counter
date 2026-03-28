@@ -270,6 +270,12 @@ function generateId() {
 
 function getTimerValues(timer) {
   const now    = new Date();
+  // FIX: normalise 'now' to midnight so that time-of-day does not affect
+  // date arithmetic. Without this, on an exact anniversary the year
+  // comparison overshoots (e.g. 2027-03-26T17:04 > 2027-03-26T00:00)
+  // causing years to decrement to 0 and months/days to go negative.
+  now.setHours(0, 0, 0, 0);
+
   const target = new Date(timer.date + 'T00:00:00');
 
   const fromDate = timer.mode === 'countup' ? target : now;
@@ -548,6 +554,7 @@ function applySlider(vals) {
     // Total months elapsed, then weeks and days from remainder
     const timer = appState.timers.find(t => t.id === appState.activeTimerId);
     const now    = new Date();
+    now.setHours(0, 0, 0, 0); // normalise to midnight, consistent with getTimerValues
     const target = new Date(timer.date + 'T00:00:00');
     const fromDate = timer.mode === 'countup' ? target : now;
     const toDate   = timer.mode === 'countup' ? now    : target;
