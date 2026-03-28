@@ -27,6 +27,12 @@
           <span class="icon-sun">☀</span>
           <span class="icon-moon">☽</span>
         </button>
+        <!-- Export: downloads a JSON backup of all timers -->
+        <button id="btn-export" class="icon-btn" aria-label="Export timers">↓</button>
+        <!-- Import: opens a file picker to restore from a JSON backup -->
+        <button id="btn-import" class="icon-btn" aria-label="Import timers">↑</button>
+        <!-- Hidden file input — triggered programmatically by the Import button -->
+        <input type="file" id="input-import-file" accept=".json" style="display:none" />
         <button id="btn-new-timer" class="icon-btn" aria-label="Add new timer">＋</button>
       </div>
     </header>
@@ -107,7 +113,6 @@
         </div>
       </div>
 
-
       <!-- Message displayed when within a message window -->
       <div id="detail-message" class="detail-message hidden"></div>
     </div>
@@ -169,7 +174,7 @@
 
         <!-- Tab: built-in themes -->
         <div id="wp-panel-builtin" class="wp-panel" role="tabpanel">
-          <!-- Theme grids are built by JS; one section per category -->
+          <!-- Theme grid is built by JS -->
           <div id="wp-theme-grid" class="wp-theme-grid"></div>
           <!-- "None" option to clear any wallpaper -->
           <button type="button" id="btn-wp-none" class="wp-none-btn">✕ No background</button>
@@ -203,8 +208,7 @@
 
       <!-- ── Messages ─────────────────────────────────
            Each message is shown on the detail screen
-           below the time display, from a set number of
-           days before a chosen milestone.
+           below the time display, from a specific date.
       ── -->
       <label class="form-label">Messages</label>
       <p class="form-hint">Add messages to display on the timer screen from a specific date — e.g. "Buy a card and gift for wife" showing from your anniversary date.</p>
@@ -219,8 +223,6 @@
           placeholder="e.g. Buy a card and gift for wife"
           rows="2"
         ></textarea>
-
-
 
         <!-- Date the message is tied to -->
         <label class="message-builder-label" for="input-message-date">Display from this date</label>
