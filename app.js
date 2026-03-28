@@ -6,6 +6,7 @@
  *  - Built-in CSS themes (no image files — pure gradients, no copyright issues)
  *  - User photos stored in IndexedDB (can hold binary data, unlike localStorage)
  *  - localStorage still holds all timer metadata; IndexedDB only holds image blobs
+ *  - Export / Import: back up and restore timer metadata as a JSON file
  *
  * Why IndexedDB for photos?
  *  localStorage only stores strings, and images as base64 strings balloon in
@@ -219,8 +220,8 @@ async function deletePhoto(timerId) {
 
 /* ════════════════════════════════════════════════════
    4. STATE & PERSISTENCE
-   Timers (metadata) → localStorage
-   Photos (binary)   → IndexedDB
+   Timers (metadata) -> localStorage
+   Photos (binary)   -> IndexedDB
 ════════════════════════════════════════════════════ */
 
 const STORAGE_KEY = 'milestoneCounter_v1';
@@ -284,13 +285,13 @@ function getTimerValues(timer) {
   const isExpired = toDate < fromDate;
   if (isExpired) return { years: 0, months: 0, weeks: 0, days: 0, totalDays: 0, isExpired: true };
 
-  // ── Years ──
+  // -- Years --
   let years = toDate.getFullYear() - fromDate.getFullYear();
   const afterYears = new Date(fromDate);
   afterYears.setFullYear(afterYears.getFullYear() + years);
   if (afterYears > toDate) { years--; afterYears.setFullYear(afterYears.getFullYear() - 1); }
 
-  // ── Months after years ──
+  // -- Months after years --
   let months = (toDate.getFullYear() - afterYears.getFullYear()) * 12
              + (toDate.getMonth()    - afterYears.getMonth());
   if (toDate.getDate() < afterYears.getDate()) months--;
@@ -299,7 +300,7 @@ function getTimerValues(timer) {
   const afterMonths = new Date(afterYears);
   afterMonths.setMonth(afterMonths.getMonth() + months);
 
-  // ── Weeks and days after months ──
+  // -- Weeks and days after months --
   const remainingMs   = toDate - afterMonths;
   const remainingDays = Math.floor(remainingMs / (1000 * 60 * 60 * 24));
   const weeks = Math.floor(remainingDays / 7);
@@ -387,7 +388,7 @@ function renderTimerList() {
         <div class="timer-card-sub">${modeVerb} ${formatDate(timer.date)}</div>
       </div>
       <div>
-        <div class="timer-card-days">${isExpired ? '—' : totalDays}</div>
+        <div class="timer-card-days">${isExpired ? '\u2014' : totalDays}</div>
         <div class="timer-card-days-label">${isExpired ? 'arrived' : (timer.mode === 'countdown' ? 'days left' : 'days')}</div>
       </div>
     `;
@@ -402,11 +403,6 @@ function renderTimerList() {
    9. RENDERING — Detail Screen
 ════════════════════════════════════════════════════ */
 
-/**
- * Apply the wallpaper to the detail screen background layer.
- * Loads the photo from IndexedDB if needed.
- * @param {object} timer
- */
 /**
  * Render a photo with a position/zoom transform onto a canvas and return
  * a data URL. Used to apply the user's crop to the detail screen wallpaper.
@@ -595,7 +591,7 @@ function updateDetailDisplay() {
   const { totalDays, isExpired } = vals;
   const { dispYears, dispMonths, dispWeeks, dispDays } = applySlider(vals);
 
-  document.getElementById('disp-years').textContent  = isExpired ? '—'  : String(dispYears);
+  document.getElementById('disp-years').textContent  = isExpired ? '\u2014'  : String(dispYears);
   document.getElementById('disp-months').textContent = isExpired ? '--' : String(dispMonths);
   document.getElementById('disp-weeks').textContent  = isExpired ? '--' : String(dispWeeks);
   document.getElementById('disp-days').textContent   = isExpired ? '--' : String(dispDays);
@@ -701,7 +697,7 @@ function buildThemeGrid() {
     swatch.dataset.themeKey = theme.key;
     swatch.setAttribute('aria-label', theme.label);
     swatch.style.background = theme.css;
-    swatch.innerHTML = `<span class="wp-selected-tick" aria-hidden="true">✓</span><span class="wp-theme-label">${theme.label}</span>`;
+    swatch.innerHTML = `<span class="wp-selected-tick" aria-hidden="true">\u2713</span><span class="wp-theme-label">${theme.label}</span>`;
 
     swatch.addEventListener('click', () => {
       formWallpaperSelection = theme.key;
@@ -758,20 +754,20 @@ function hidePhotoPreview() {
   document.getElementById('wp-preview-img').src = '';
 }
 
-// ── Milestone checkbox builder ──
+// -- Milestone checkbox builder --
 
 
-// ── Custom milestone list ──
+// -- Custom milestone list --
 
 
 /* ════════════════════════════════════════════════════
    MESSAGE SYSTEM FORM HELPERS
 
    Each timer can have multiple messages. Each message:
-     text:       string  — the message to display
-     daysBefore: number  — start showing this many days
+     text:       string  -- the message to display
+     daysBefore: number  -- start showing this many days
                            before the milestone date
-     milestoneKey: string — which milestone it's tied to
+     milestoneKey: string -- which milestone it's tied to
                             (used to compute the target date)
 
    Messages are stored on the timer as:
@@ -805,12 +801,12 @@ function renderMessageRows(messages, timer = null) {
     row.className = 'message-row';
 
     // Build trigger label from the date
-    const triggerLabel = msg.triggerDate ? `📅 ${formatDate(msg.triggerDate)}` : 'No date set';
+    const triggerLabel = msg.triggerDate ? `\uD83D\uDCC5 ${formatDate(msg.triggerDate)}` : 'No date set';
 
     row.innerHTML = `
       <div class="message-row-header">
         <span class="message-row-milestone">${triggerLabel}</span>
-        <button type="button" class="custom-milestone-remove message-remove-btn" data-index="${index}" aria-label="Remove message">✕</button>
+        <button type="button" class="custom-milestone-remove message-remove-btn" data-index="${index}" aria-label="Remove message">\u2715</button>
       </div>
       <p class="message-row-text">${escapeHtml(msg.text)}</p>
       <p class="message-row-meta">Showing from ${formatDate(msg.triggerDate)}</p>
@@ -867,7 +863,7 @@ function addMessageToForm() {
 /** Reference to the timer being edited — needed for milestone dropdown in messages. */
 let formEditingTimer = null;
 
-// ── Form read / submit / delete ──
+// -- Form read / submit / delete --
 
 function readFormValues() {
   const name = document.getElementById('input-name').value.trim();
@@ -943,6 +939,152 @@ async function deleteTimer() {
   showScreen('list');
 }
 
+
+/* ════════════════════════════════════════════════════
+   10b. EXPORT & IMPORT
+
+   Export: serialise the timers array to a JSON file
+   and trigger a download via a temporary <a> element.
+   Photos are NOT included — they live in IndexedDB
+   and are intentionally excluded to keep the file small.
+
+   Import: read a JSON file chosen by the user, validate
+   it, then ask whether to replace all timers or merge.
+   Merging skips any timer whose ID already exists, so
+   re-importing the same backup is safe.
+
+   The HTML you need to add (see instructions below):
+     <button id="btn-export">Export</button>
+     <button id="btn-import">Import</button>
+     <input type="file" id="input-import-file" accept=".json" style="display:none">
+════════════════════════════════════════════════════ */
+
+/**
+ * Export all timer metadata to a downloadable JSON file.
+ * The file is named milestone-backup-YYYY-MM-DD.json.
+ * Photos are excluded (stored separately in IndexedDB).
+ */
+function exportTimers() {
+  if (appState.timers.length === 0) {
+    alert('No timers to export.');
+    return;
+  }
+
+  // Build the export payload — timer metadata only, no photo blobs.
+  // If a timer used a photo wallpaper, we reset it to 'none' in the
+  // export since the photo itself is not included.
+  const payload = {
+    exportedAt: new Date().toISOString(),
+    version:    1,
+    timers:     appState.timers.map(t => ({
+      id:        t.id,
+      name:      t.name,
+      date:      t.date,
+      mode:      t.mode,
+      wallpaper: t.wallpaper === 'photo' ? 'none' : (t.wallpaper || 'none'),
+      messages:  t.messages || [],
+      // photoTransform intentionally excluded — meaningless without the photo
+    })),
+  };
+
+  // Serialise to pretty-printed JSON
+  const json = JSON.stringify(payload, null, 2);
+  const blob = new Blob([json], { type: 'application/json' });
+  const url  = URL.createObjectURL(blob);
+
+  // Build a filename with today's date for easy identification
+  const today    = new Date().toISOString().slice(0, 10); // "YYYY-MM-DD"
+  const filename = `milestone-backup-${today}.json`;
+
+  // Trigger the browser download via a temporary invisible link
+  const a = document.createElement('a');
+  a.href     = url;
+  a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+
+  // Release the object URL to free memory
+  URL.revokeObjectURL(url);
+}
+
+/**
+ * Open the hidden file picker so the user can choose a backup file.
+ * The actual import logic runs in handleImportFile() once a file is chosen.
+ */
+function importTimers() {
+  document.getElementById('input-import-file').click();
+}
+
+/**
+ * Handle the file chosen by the user for import.
+ * Validates the JSON, then asks: replace all or merge?
+ * Merge skips timers whose ID already exists — safe to re-import.
+ * @param {Event} event - the change event from the file input
+ */
+function handleImportFile(event) {
+  const file = event.target.files && event.target.files[0];
+  if (!file) return;
+
+  // Reset the input so the same file can be chosen again if needed
+  event.target.value = '';
+
+  const reader = new FileReader();
+  reader.onload = (e) => {
+    let payload;
+
+    // Attempt to parse the JSON — show a friendly error if it fails
+    try {
+      payload = JSON.parse(e.target.result);
+    } catch {
+      alert('Could not read the file. Please make sure it is a valid Milestone Counter backup.');
+      return;
+    }
+
+    // Basic structure check
+    if (!payload.timers || !Array.isArray(payload.timers)) {
+      alert('This file does not look like a Milestone Counter backup.');
+      return;
+    }
+
+    const count = payload.timers.length;
+    if (count === 0) {
+      alert('The backup file contains no timers.');
+      return;
+    }
+
+    // Ask the user how to handle the import.
+    // OK  = replace everything with the backup
+    // Cancel = merge (add only timers not already present)
+    const replace = confirm(
+      `Found ${count} timer${count !== 1 ? 's' : ''} in the backup.\n\n` +
+      `OK     = Replace all current timers with the backup.\n` +
+      `Cancel = Merge — add only timers not already in your app.`
+    );
+
+    if (replace) {
+      // Replace: overwrite the entire timers list
+      appState.timers = payload.timers;
+    } else {
+      // Merge: only add timers whose ID is not already present
+      const existingIds = new Set(appState.timers.map(t => t.id));
+      const newTimers   = payload.timers.filter(t => !existingIds.has(t.id));
+
+      if (newTimers.length === 0) {
+        alert('All timers in the backup already exist in your app. Nothing was added.');
+        return;
+      }
+
+      appState.timers = [...appState.timers, ...newTimers];
+      alert(`Added ${newTimers.length} new timer${newTimers.length !== 1 ? 's' : ''}.`);
+    }
+
+    saveState();
+    renderTimerList();
+  };
+
+  reader.readAsText(file);
+}
 
 
 /* ════════════════════════════════════════════════════
@@ -1064,7 +1206,7 @@ function applyEditorTransform() {
   const imgEl   = document.getElementById('photo-editor-img');
   const { x, y, scale } = editorState;
 
-  // The image is positioned at top:50% left:50% (its centre is at the viewport centre)
+  // The image is positioned at top:50% left:50% (its centre is at the viewport centre).
   // We then apply a translate to move it, and a scale to zoom.
   // translate(-50%,-50%) centres the image, then our x/y offsets move it.
   imgEl.style.transform = `translate(calc(-50% + ${x}px), calc(-50% + ${y}px)) scale(${scale})`;
@@ -1083,8 +1225,8 @@ function constrainTransform() {
   const iw = imgEl.naturalWidth  * editorState.scale;
   const ih = imgEl.naturalHeight * editorState.scale;
 
-  // Maximum allowed offset: half the difference between image size and viewport size
-  // When image is smaller than viewport in a dimension, clamp to 0
+  // Maximum allowed offset: half the difference between image size and viewport size.
+  // When the image is smaller than the viewport in a dimension, clamp to 0.
   const maxX = Math.max(0, (iw - vw) / 2);
   const maxY = Math.max(0, (ih - vh) / 2);
 
@@ -1128,11 +1270,10 @@ function updatePhotoPreviewThumbnail(dataUrl, transform) {
   const previewImg = document.getElementById('wp-preview-img');
   const viewport   = document.getElementById('photo-editor-viewport');
 
-  // Draw a small (360×180) canvas representing the crop
+  // Draw a small (360 x aspect-correct height) canvas representing the crop
   const canvas  = document.createElement('canvas');
   const vw      = viewport.clientWidth  || 360;
   const vh      = viewport.clientHeight || 640;
-  // Aspect ratio of the viewport
   const aspect  = vw / vh;
   canvas.width  = 360;
   canvas.height = Math.round(360 / aspect);
@@ -1144,7 +1285,6 @@ function updatePhotoPreviewThumbnail(dataUrl, transform) {
     const scaledW = img.naturalWidth  * scale;
     const scaledH = img.naturalHeight * scale;
 
-    // Destination canvas dimensions
     const dw = canvas.width;
     const dh = canvas.height;
 
@@ -1173,7 +1313,7 @@ function updatePhotoPreviewThumbnail(dataUrl, transform) {
   img.src = dataUrl;
 }
 
-/* ── Pointer event handlers (unified mouse + touch) ── */
+/* -- Pointer event handlers (unified mouse + touch) -- */
 
 /**
  * Get the distance between two pointer positions (for pinch zoom).
@@ -1217,7 +1357,7 @@ function onEditorPointerMove(e) {
   const pointerCount = Object.keys(editorState.pointers).length;
 
   if (pointerCount === 1 && editorState.isDragging) {
-    // ── Drag ──
+    // -- Drag --
     const dx = e.clientX - editorState.lastX;
     const dy = e.clientY - editorState.lastY;
 
@@ -1231,7 +1371,7 @@ function onEditorPointerMove(e) {
     applyEditorTransform();
 
   } else if (pointerCount === 2) {
-    // ── Pinch zoom ──
+    // -- Pinch zoom --
     const pts = Object.values(editorState.pointers);
     const dist = pointerDistance(pts[0], pts[1]);
 
@@ -1239,7 +1379,7 @@ function onEditorPointerMove(e) {
       const ratio = dist / editorState.lastPinchDist;
       editorState.scale = Math.max(
         editorState.minScale,
-        Math.min(editorState.scale * ratio, editorState.minScale * 8) // max 8× zoom
+        Math.min(editorState.scale * ratio, editorState.minScale * 8) // max 8x zoom
       );
       constrainTransform();
       applyEditorTransform();
@@ -1279,22 +1419,8 @@ function onEditorPointerUp(e) {
 ════════════════════════════════════════════════════ */
 
 /**
- * Compute which message (if any) should be displayed right now.
- * Returns the most relevant message — the one tied to the
- * nearest milestone that hasn't passed yet and is within
- * its daysBefore window.
- *
- * @param {object} timer
- * @param {number} totalDays - elapsed (countup) or remaining (countdown)
- * @returns {{ text: string, daysUntil: number, milestoneName: string }|null}
- */
-/**
  * Compute which message (if any) should be active right now.
- * Handles two trigger types:
- *   - 'milestone': counts days from a milestone threshold
- *   - 'date':      counts days from a specific calendar date
- *
- * Returns the message with the smallest daysUntil (most imminent).
+ * Returns the message tied to the most recently passed trigger date.
  *
  * @param {object} timer
  * @param {number} totalDays - elapsed (countup) or remaining (countdown)
@@ -1317,17 +1443,16 @@ function getActiveMessage(timer, totalDays) {
     let triggerLabel;
 
     if (msg.triggerType === 'date' && msg.triggerDate) {
-      // ── Date trigger ──
       // daysUntil = days from today until the trigger date
+      // Negative means the date has already passed
       const triggerDay = new Date(msg.triggerDate + 'T00:00:00');
       daysUntil    = Math.round((triggerDay - today) / (1000 * 60 * 60 * 24));
-      triggerLabel = `📅 ${formatDate(msg.triggerDate)}`;
-
+      triggerLabel = `\uD83D\uDCC5 ${formatDate(msg.triggerDate)}`;
     } else {
-      continue; // No valid trigger — date trigger required
+      continue; // date trigger required
     }
 
-    // Show the message from the trigger date onwards (daysUntil <= 0 means date has arrived or passed)
+    // Show the message on or after the trigger date (daysUntil <= 0)
     const inWindow = daysUntil <= 0;
 
     if (inWindow && daysUntil < bestDaysUntil) {
@@ -1356,7 +1481,7 @@ function updateDetailMessage(timer, totalDays) {
       ? 'Today'
       : `Since ${active.triggerLabel}`;
 
-    el.innerHTML = `<span class="detail-message-text">${escapeHtml(active.text)}</span><span class="detail-message-when">${dayStr} — ${active.triggerLabel}</span>`;
+    el.innerHTML = `<span class="detail-message-text">${escapeHtml(active.text)}</span><span class="detail-message-when">${dayStr} \u2013 ${active.triggerLabel}</span>`;
     el.classList.remove('hidden');
   } else {
     el.classList.add('hidden');
@@ -1415,11 +1540,17 @@ document.addEventListener('DOMContentLoaded', () => {
   applyTheme();
   renderTimerList();
 
-  // ── List ──
+  // -- List --
   document.getElementById('btn-new-timer').addEventListener('click', () => openFormScreen(null));
   document.getElementById('theme-toggle').addEventListener('click', toggleTheme);
 
-  // ── Detail ──
+  // -- Export / Import --
+  // These three elements must exist in your HTML (see note at bottom of this file).
+  document.getElementById('btn-export').addEventListener('click', exportTimers);
+  document.getElementById('btn-import').addEventListener('click', importTimers);
+  document.getElementById('input-import-file').addEventListener('change', handleImportFile);
+
+  // -- Detail --
   document.getElementById('btn-back').addEventListener('click', () => {
     stopTicker();
     renderTimerList();
@@ -1429,7 +1560,7 @@ document.addEventListener('DOMContentLoaded', () => {
     if (appState.activeTimerId) openFormScreen(appState.activeTimerId);
   });
 
-  // ── Form ──
+  // -- Form --
   document.getElementById('btn-form-cancel').addEventListener('click', () => {
     if (appState.activeTimerId && editingTimerId) openDetailScreen(appState.activeTimerId);
     else showScreen('list');
@@ -1444,7 +1575,7 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   });
 
-  // ── Wallpaper picker tabs ──
+  // -- Wallpaper picker tabs --
   document.querySelectorAll('.wp-tab').forEach(btn => {
     btn.addEventListener('click', () => switchWallpaperTab(btn.dataset.tab));
   });
@@ -1457,7 +1588,7 @@ document.addEventListener('DOMContentLoaded', () => {
     updateThemeGridSelection();
   });
 
-  // ── Photo file input ──
+  // -- Photo file input --
   document.getElementById('input-wp-photo').addEventListener('change', (e) => {
     const file = e.target.files && e.target.files[0];
     if (!file) return;
@@ -1491,7 +1622,7 @@ document.addEventListener('DOMContentLoaded', () => {
     updateThemeGridSelection();
   });
 
-  // ── Photo editor ──
+  // -- Photo editor --
 
   // "Adjust position" button opens the full-screen editor
   document.getElementById('btn-wp-adjust-photo').addEventListener('click', async () => {
@@ -1528,24 +1659,22 @@ document.addEventListener('DOMContentLoaded', () => {
   editorViewport.addEventListener('pointerup',   onEditorPointerUp);
   editorViewport.addEventListener('pointercancel', onEditorPointerUp);
 
-  // ── Unit slider ──
+  // -- Unit slider --
   document.getElementById('unit-slider').addEventListener('input', (e) => {
     sliderPosition = parseInt(e.target.value, 10);
     updateDetailDisplay();
   });
 
-  // ── Messages ──
+  // -- Messages --
   document.getElementById('btn-add-message').addEventListener('click', addMessageToForm);
 
-
-
-  // ── Custom milestones ──
+  // -- Custom milestones --
   document.getElementById('btn-add-custom-milestone').addEventListener('click', addCustomMilestoneToForm);
   document.getElementById('input-custom-days').addEventListener('keydown', (e) => {
     if (e.key === 'Enter') { e.preventDefault(); addCustomMilestoneToForm(); }
   });
 
-  // ── Milestone overlay ──
+  // -- Milestone overlay --
   document.getElementById('milestone-overlay').addEventListener('click', (e) => {
     if (e.target.id === 'btn-close-milestone' || e.target.closest('#btn-close-milestone')) {
       closeMilestoneOverlay();
@@ -1553,10 +1682,27 @@ document.addEventListener('DOMContentLoaded', () => {
     if (e.target === document.getElementById('milestone-overlay')) closeMilestoneOverlay();
   });
 
-  // ── Service worker ──
+  // -- Service worker --
   if ('serviceWorker' in navigator) {
     navigator.serviceWorker.register('./sw.js')
       .then(reg  => console.log('[Milestone] SW registered:', reg.scope))
       .catch(err => console.warn('[Milestone] SW failed:', err));
   }
 });
+
+/*
+  ════════════════════════════════════════════════════
+  HTML CHANGES REQUIRED
+
+  Add these three elements somewhere on your list
+  screen (screen-list), e.g. near the "New Timer"
+  button in the header or footer area:
+
+    <button id="btn-export">Export</button>
+    <button id="btn-import">Import</button>
+    <input type="file" id="input-import-file" accept=".json" style="display:none">
+
+  The file input is invisible — it is triggered
+  programmatically when the Import button is tapped.
+  ════════════════════════════════════════════════════
+*/
