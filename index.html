@@ -27,10 +27,10 @@
           <span class="icon-sun">☀</span>
           <span class="icon-moon">☽</span>
         </button>
-        <!-- Export: downloads a JSON backup of all timers -->
-        <button id="btn-export" class="icon-btn" aria-label="Export timers">↓</button>
-        <!-- Import: opens a file picker to restore from a JSON backup -->
-        <button id="btn-import" class="icon-btn" aria-label="Import timers">↑</button>
+        <!-- Export: ↑ = save backup up to a file -->
+        <button id="btn-export" class="icon-btn" aria-label="Export timers to backup file">↑</button>
+        <!-- Import: ↓ = bring a backup down into the app -->
+        <button id="btn-import" class="icon-btn" aria-label="Import timers from backup file">↓</button>
         <!-- Hidden file input — triggered programmatically by the Import button -->
         <input type="file" id="input-import-file" accept=".json" style="display:none" />
         <button id="btn-new-timer" class="icon-btn" aria-label="Add new timer">＋</button>
@@ -64,8 +64,22 @@
     <div class="detail-content">
       <header class="app-header app-header--transparent">
         <button id="btn-back" class="icon-btn back-btn" aria-label="Back to timer list">←</button>
-        <h2 id="detail-timer-name" class="detail-name"></h2>
-        <button id="btn-edit-timer" class="icon-btn" aria-label="Edit this timer">✎</button>
+
+        <!-- Timer name: centred and bold. The flex header places this between
+             the back button and the right-hand icon group, so text-align:center
+             combined with flex:1 ensures it sits in the middle of the bar. -->
+        <h2
+          id="detail-timer-name"
+          class="detail-name"
+          style="flex:1; text-align:center; font-weight:700;"
+        ></h2>
+
+        <!-- Right-hand icons: share and edit -->
+        <div style="display:flex; gap:4px; align-items:center;">
+          <!-- Share button: opens the iOS native share sheet (email, text, AirDrop etc.) -->
+          <button id="btn-share-timer" class="icon-btn" aria-label="Share this timer">⬆</button>
+          <button id="btn-edit-timer" class="icon-btn" aria-label="Edit this timer">✎</button>
+        </div>
       </header>
 
       <p id="detail-mode-label" class="mode-label"></p>
