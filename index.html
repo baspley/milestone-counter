@@ -65,9 +65,7 @@
       <header class="app-header app-header--transparent">
         <button id="btn-back" class="icon-btn back-btn" aria-label="Back to timer list">←</button>
 
-        <!-- Timer name: centred and bold. The flex header places this between
-             the back button and the right-hand icon group, so text-align:center
-             combined with flex:1 ensures it sits in the middle of the bar. -->
+        <!-- Small timer name in the header bar for context while scrolling -->
         <h2
           id="detail-timer-name"
           class="detail-name"
@@ -76,7 +74,6 @@
 
         <!-- Right-hand icons: share and edit -->
         <div style="display:flex; gap:4px; align-items:center;">
-          <!-- Share button: opens the iOS native share sheet (email, text, AirDrop etc.) -->
           <button id="btn-share-timer" class="icon-btn" aria-label="Share this timer">⬆</button>
           <button id="btn-edit-timer" class="icon-btn" aria-label="Edit this timer">✎</button>
         </div>
@@ -108,9 +105,22 @@
         </div>
       </div>
 
+      <!-- Large centred timer name displayed prominently below the countdown digits.
+           Styled via inline CSS here; feel free to move to style.css if preferred. -->
+      <p
+        id="detail-timer-name-large"
+        style="
+          text-align: center;
+          font-size: 1.6rem;
+          font-weight: 700;
+          margin: 0.6rem 1rem 0.2rem;
+          letter-spacing: 0.01em;
+          opacity: 0.95;
+        "
+      ></p>
+
       <!-- Unit slider: drag to choose the largest unit displayed.
-           Position 0=Years, 1=Months, 2=Weeks, 3=Days.
-           Units to the left of the chosen position show as 0. -->
+           Position 0=Years, 1=Months, 2=Weeks, 3=Days. -->
       <div class="unit-slider-wrap">
         <input
           type="range"
@@ -170,13 +180,10 @@
         <button type="button" class="mode-toggle-btn" data-mode="countup">Count up from</button>
       </div>
 
-      <!-- ── Wallpaper picker ───────────────────────
-           Two tabs: Built-in themes | Your photo
-      ── -->
+      <!-- ── Wallpaper picker ── -->
       <label class="form-label">Background image</label>
       <div class="wallpaper-picker">
 
-        <!-- Tab bar -->
         <div class="wp-tabs" role="tablist">
           <button type="button" class="wp-tab active" data-tab="builtin" role="tab" aria-selected="true">
             Built-in themes
@@ -186,30 +193,23 @@
           </button>
         </div>
 
-        <!-- Tab: built-in themes -->
         <div id="wp-panel-builtin" class="wp-panel" role="tabpanel">
-          <!-- Theme grid is built by JS -->
           <div id="wp-theme-grid" class="wp-theme-grid"></div>
-          <!-- "None" option to clear any wallpaper -->
           <button type="button" id="btn-wp-none" class="wp-none-btn">✕ No background</button>
         </div>
 
-        <!-- Tab: your photo -->
         <div id="wp-panel-photo" class="wp-panel hidden" role="tabpanel">
-          <!-- Preview of the current photo (shown once one is chosen) -->
           <div id="wp-photo-preview" class="wp-photo-preview hidden">
             <button type="button" id="btn-wp-adjust-photo" class="wp-adjust-btn">⤢ Adjust position &amp; zoom</button>
             <img id="wp-preview-img" class="wp-preview-img" alt="Your chosen background" />
             <button type="button" id="btn-wp-remove-photo" class="wp-remove-photo-btn">✕ Remove photo</button>
           </div>
 
-          <!-- Upload prompt (shown when no photo is set) -->
           <label id="wp-upload-label" class="wp-upload-label" for="input-wp-photo">
             <span class="wp-upload-icon">📷</span>
             <span class="wp-upload-text">Tap to choose a photo</span>
             <span class="wp-upload-sub">Saved inside the app — works offline</span>
           </label>
-          <!-- The actual file input — hidden, triggered by the label above -->
           <input
             id="input-wp-photo"
             type="file"
@@ -220,17 +220,11 @@
 
       </div><!-- /.wallpaper-picker -->
 
-      <!-- ── Messages ─────────────────────────────────
-           Each message is shown on the detail screen
-           below the time display, from a specific date.
-      ── -->
+      <!-- ── Messages ── -->
       <label class="form-label">Messages</label>
       <p class="form-hint">Add messages to display on the timer screen from a specific date — e.g. "Buy a card and gift for wife" showing from your anniversary date.</p>
 
-      <!-- Message builder inputs -->
       <div class="message-builder">
-
-        <!-- Message text -->
         <textarea
           id="input-message-text"
           class="form-input message-text-input"
@@ -238,7 +232,6 @@
           rows="2"
         ></textarea>
 
-        <!-- Date the message is tied to -->
         <label class="message-builder-label" for="input-message-date">Display from this date</label>
         <input
           id="input-message-date"
@@ -250,7 +243,6 @@
         <button type="button" id="btn-add-message" class="add-custom-btn message-add-btn">Add message</button>
       </div>
 
-      <!-- List of added messages -->
       <div class="message-list-header">
         <span class="form-hint" style="margin:0">Messages</span>
         <span id="message-count" class="message-count">0 of 5</span>
@@ -268,9 +260,6 @@
 
   <!-- ═══════════════════════════════════════════════
        OVERLAY: Photo position & zoom editor
-       Full-screen editor that appears when the user
-       taps the photo preview in the form.
-       Drag to reposition, pinch to zoom.
   ═══════════════════════════════════════════════ -->
   <div id="photo-editor-overlay" class="photo-editor-overlay hidden" role="dialog" aria-modal="true" aria-label="Adjust photo position">
 
@@ -280,16 +269,13 @@
       <button type="button" id="btn-photo-editor-done" class="photo-editor-btn photo-editor-btn--done">Done</button>
     </div>
 
-    <!-- The viewport — clips the image to phone-screen proportions -->
     <div class="photo-editor-viewport" id="photo-editor-viewport">
-      <!-- Grid overlay to help with positioning -->
       <div class="photo-editor-grid" aria-hidden="true">
         <div class="photo-editor-grid-line photo-editor-grid-line--v1"></div>
         <div class="photo-editor-grid-line photo-editor-grid-line--v2"></div>
         <div class="photo-editor-grid-line photo-editor-grid-line--h1"></div>
         <div class="photo-editor-grid-line photo-editor-grid-line--h2"></div>
       </div>
-      <!-- The image being positioned — transform applied by JS -->
       <img id="photo-editor-img" class="photo-editor-img" alt="" draggable="false" />
     </div>
 
