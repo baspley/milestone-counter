@@ -7,6 +7,7 @@
  *  - User photos stored in IndexedDB (can hold binary data, unlike localStorage)
  *  - localStorage still holds all timer metadata; IndexedDB only holds image blobs
  *  - Export / Import: back up and restore timer metadata as a JSON file
+ *  - Share: send a timer summary via the iOS native share sheet (email, text, etc.)
  *
  * Why IndexedDB for photos?
  *  localStorage only stores strings, and images as base64 strings balloon in
@@ -407,9 +408,6 @@ function renderTimerList() {
  * Render a photo with a position/zoom transform onto a canvas and return
  * a data URL. Used to apply the user's crop to the detail screen wallpaper.
  *
- * We render at the device's screen size (window.innerWidth x window.innerHeight)
- * so the result looks sharp on any iPhone.
- *
  * @param {string} dataUrl - original photo
  * @param {{ x: number, y: number, scale: number }} transform
  * @returns {Promise<string>} - data URL of the cropped image
@@ -429,11 +427,9 @@ async function applyTransformToCanvas(dataUrl, transform) {
       const scaledW = img.naturalWidth  * transform.scale;
       const scaledH = img.naturalHeight * transform.scale;
 
-      // Image centre in screen space (viewport centre + user offset)
       const imgCentreX = vw / 2 + transform.x;
       const imgCentreY = vh / 2 + transform.y;
 
-      // Top-left of scaled image
       const imgLeft = imgCentreX - scaledW / 2;
       const imgTop  = imgCentreY - scaledH / 2;
 
@@ -441,7 +437,7 @@ async function applyTransformToCanvas(dataUrl, transform) {
 
       resolve(canvas.toDataURL('image/jpeg', 0.92));
     };
-    img.onerror = () => resolve(dataUrl); // fallback to original if anything fails
+    img.onerror = () => resolve(dataUrl);
     img.src = dataUrl;
   });
 }
@@ -450,9 +446,6 @@ async function applyDetailWallpaper(timer) {
   const wallpaperEl = document.getElementById('detail-wallpaper');
   const screenEl    = document.getElementById('screen-detail');
 
-  // No wallpaper set — apply immediately without touching IndexedDB.
-  // Timers created before the wallpaper feature was added have
-  // wallpaper === undefined, which also falls through here.
   if (!timer.wallpaper || timer.wallpaper === 'none') {
     wallpaperEl.style.background = '';
     screenEl.classList.add('no-wallpaper');
@@ -462,11 +455,8 @@ async function applyDetailWallpaper(timer) {
   let css = null;
 
   if (timer.wallpaper === 'photo') {
-    // Only open IndexedDB when we actually need a photo
     const dataUrl = await loadPhoto(timer.id);
     if (dataUrl) {
-      // If we have a position/zoom transform, render it to a canvas first
-      // so the wallpaper respects the user's crop.
       if (timer.photoTransform) {
         const croppedUrl = await applyTransformToCanvas(dataUrl, timer.photoTransform);
         css = `url('${croppedUrl}') center / cover no-repeat`;
@@ -475,7 +465,6 @@ async function applyDetailWallpaper(timer) {
       }
     }
   } else {
-    // Built-in CSS theme — no async work needed
     const theme = getThemeByKey(timer.wallpaper);
     if (theme) css = theme.css;
   }
@@ -502,11 +491,6 @@ async function openDetailScreen(timerId) {
     timer.mode === 'countdown' ? 'Counting down to' : 'Counting up from';
   document.getElementById('detail-target-date').textContent = formatDate(timer.date);
 
-  // Update the digits immediately — do NOT await wallpaper first.
-  // The wallpaper is cosmetic; the digits are the point. Loading a photo
-  // from IndexedDB can take a moment, and we never want that to block
-  // the display from rendering.
-  // Reset slider to Years (position 0) each time a timer is opened
   sliderPosition = 0;
   const sliderEl = document.getElementById('unit-slider');
   if (sliderEl) sliderEl.value = 0;
@@ -514,7 +498,6 @@ async function openDetailScreen(timerId) {
   updateDetailDisplay();
   startTicker();
 
-  // Apply wallpaper in the background — it will appear once ready.
   applyDetailWallpaper(timer).catch(err => {
     console.warn('[Milestone] Wallpaper apply failed:', err);
   });
@@ -523,16 +506,11 @@ async function openDetailScreen(timerId) {
 /**
  * The slider position controls which unit is the largest displayed.
  * 0 = Years, 1 = Months, 2 = Weeks, 3 = Days
- * At position N, units 0..N-1 are shown as 0, unit N onwards are computed normally.
  */
-let sliderPosition = 0; // default: show years as largest unit
+let sliderPosition = 0;
 
 /**
  * Compute display values based on slider position.
- * At position 0 (Years): show years, months, weeks, days normally.
- * At position 1 (Months): collapse years to 0, recalculate months from full span.
- * At position 2 (Weeks): collapse years+months to 0, recalculate weeks from full span.
- * At position 3 (Days): collapse all to 0 except days (totalDays).
  *
  * @param {{ years, months, weeks, days, totalDays, isExpired }} vals
  * @returns {{ dispYears, dispMonths, dispWeeks, dispDays }}
@@ -542,15 +520,13 @@ function applySlider(vals) {
   if (isExpired) return { dispYears: 0, dispMonths: 0, dispWeeks: 0, dispDays: 0 };
 
   if (sliderPosition === 0) {
-    // Normal: years is the largest unit
     return { dispYears: years, dispMonths: months, dispWeeks: weeks, dispDays: days };
 
   } else if (sliderPosition === 1) {
     // Months is largest — convert all years into months
-    // Total months elapsed, then weeks and days from remainder
     const timer = appState.timers.find(t => t.id === appState.activeTimerId);
     const now    = new Date();
-    now.setHours(0, 0, 0, 0); // normalise to midnight, consistent with getTimerValues
+    now.setHours(0, 0, 0, 0);
     const target = new Date(timer.date + 'T00:00:00');
     const fromDate = timer.mode === 'countup' ? target : now;
     const toDate   = timer.mode === 'countup' ? now    : target;
@@ -572,13 +548,13 @@ function applySlider(vals) {
     };
 
   } else if (sliderPosition === 2) {
-    // Weeks is largest — express everything in weeks + remaining days
+    // Weeks is largest
     const totalWeeks = Math.floor(totalDays / 7);
     const remDays    = totalDays % 7;
     return { dispYears: 0, dispMonths: 0, dispWeeks: totalWeeks, dispDays: remDays };
 
   } else {
-    // Days is largest — just show total days
+    // Days is largest
     return { dispYears: 0, dispMonths: 0, dispWeeks: 0, dispDays: totalDays };
   }
 }
@@ -591,13 +567,96 @@ function updateDetailDisplay() {
   const { totalDays, isExpired } = vals;
   const { dispYears, dispMonths, dispWeeks, dispDays } = applySlider(vals);
 
-  document.getElementById('disp-years').textContent  = isExpired ? '\u2014'  : String(dispYears);
-  document.getElementById('disp-months').textContent = isExpired ? '--' : String(dispMonths);
-  document.getElementById('disp-weeks').textContent  = isExpired ? '--' : String(dispWeeks);
-  document.getElementById('disp-days').textContent   = isExpired ? '--' : String(dispDays);
+  document.getElementById('disp-years').textContent  = isExpired ? '\u2014' : String(dispYears);
+  document.getElementById('disp-months').textContent = isExpired ? '--'     : String(dispMonths);
+  document.getElementById('disp-weeks').textContent  = isExpired ? '--'     : String(dispWeeks);
+  document.getElementById('disp-days').textContent   = isExpired ? '--'     : String(dispDays);
 
-  // Show active message on detail screen
   updateDetailMessage(timer, totalDays);
+}
+
+
+/* ════════════════════════════════════════════════════
+   9b. SHARE TIMER
+
+   Uses the Web Share API (navigator.share), which on
+   iOS opens the native share sheet — letting the user
+   send via Messages, Mail, AirDrop, WhatsApp, etc.
+
+   If the browser does not support navigator.share
+   (e.g. desktop Safari or Chrome on Mac), we fall back
+   to copying the text to the clipboard instead.
+
+   The shared text is a plain-language summary:
+     Anniversary
+     Counting down to 26 March 2027
+     11 months, 3 weeks and 5 days to go
+════════════════════════════════════════════════════ */
+
+/**
+ * Build a readable time string from timer values.
+ * e.g. "1 year, 2 months, 3 weeks and 4 days"
+ * Omits any unit that is zero.
+ * @param {{ years, months, weeks, days, totalDays, isExpired }} vals
+ * @returns {string}
+ */
+function buildTimeString(vals) {
+  const { years, months, weeks, days } = vals;
+
+  const parts = [];
+  if (years  > 0) parts.push(`${years} year${years   !== 1 ? 's' : ''}`);
+  if (months > 0) parts.push(`${months} month${months !== 1 ? 's' : ''}`);
+  if (weeks  > 0) parts.push(`${weeks} week${weeks   !== 1 ? 's' : ''}`);
+  if (days   > 0) parts.push(`${days} day${days     !== 1 ? 's' : ''}`);
+
+  if (parts.length === 0) return 'today';
+  if (parts.length === 1) return parts[0];
+
+  // Join with commas except the last pair which uses "and"
+  return parts.slice(0, -1).join(', ') + ' and ' + parts[parts.length - 1];
+}
+
+/**
+ * Share the currently viewed timer using the Web Share API.
+ * Falls back to clipboard copy if the API is unavailable.
+ */
+function shareTimer() {
+  const timer = appState.timers.find(t => t.id === appState.activeTimerId);
+  if (!timer) return;
+
+  const vals       = getTimerValues(timer);
+  const dateStr    = formatDate(timer.date);
+  const modeLabel  = timer.mode === 'countdown' ? 'Counting down to' : 'Counting up from';
+  const suffix     = timer.mode === 'countdown' ? ' to go' : ' so far';
+
+  let bodyText;
+  if (vals.isExpired) {
+    bodyText = `${timer.name}\n${modeLabel} ${dateStr}\nThis date has now passed.`;
+  } else {
+    const timeStr = buildTimeString(vals);
+    bodyText = `${timer.name}\n${modeLabel} ${dateStr}\n${timeStr}${suffix}`;
+  }
+
+  if (navigator.share) {
+    // Use the native iOS/Android share sheet
+    navigator.share({
+      title: timer.name,
+      text:  bodyText,
+    }).catch(err => {
+      // AbortError just means the user dismissed the sheet — not a real error
+      if (err.name !== 'AbortError') {
+        console.warn('[Milestone] Share failed:', err);
+      }
+    });
+  } else {
+    // Fallback for browsers without Web Share API: copy to clipboard
+    navigator.clipboard.writeText(bodyText).then(() => {
+      alert('Timer details copied to clipboard.');
+    }).catch(() => {
+      // Last resort: show the text in an alert so it can be copied manually
+      alert(bodyText);
+    });
+  }
 }
 
 
@@ -623,14 +682,13 @@ let formPendingPhotoBlob = null;
 
 /**
  * The position/zoom transform the user set in the photo editor.
- * Saved alongside the timer metadata in localStorage.
  * @type {{ x: number, y: number, scale: number }|null}
  */
 let formPendingPhotoTransform = null;
 
 function openFormScreen(timerId = null) {
   editingTimerId    = timerId;
-  formEditingTimer  = null; // will be set below
+  formEditingTimer  = null;
   const isEditing   = timerId !== null;
   const timer       = isEditing ? appState.timers.find(t => t.id === timerId) : null;
   formEditingTimer  = timer;
@@ -647,7 +705,6 @@ function openFormScreen(timerId = null) {
   setFormMessages(timer ? (timer.messages || []) : [], timer);
   document.getElementById('btn-form-delete').classList.toggle('hidden', !isEditing);
 
-  // Wallpaper state
   formWallpaperSelection    = timer ? (timer.wallpaper || 'none') : 'none';
   formPendingPhotoBlob      = null;
   formPendingPhotoTransform = timer ? (timer.photoTransform || null) : null;
@@ -656,19 +713,12 @@ function openFormScreen(timerId = null) {
   showScreen('form');
 }
 
-/**
- * Build the wallpaper picker UI: theme grid + photo tab.
- * @param {object|null} timer - the timer being edited, or null for new
- */
 async function buildWallpaperPicker(timer) {
   buildThemeGrid();
 
-  // Restore photo preview if this timer already has a photo
   if (timer && timer.wallpaper === 'photo') {
     const dataUrl = await loadPhoto(timer.id);
     if (dataUrl) {
-      // Store in editorState so the "Adjust position" button can open
-      // the editor immediately without needing to reload from IndexedDB
       editorState.dataUrl = dataUrl;
       showPhotoPreview(dataUrl, timer.photoTransform || null);
     } else {
@@ -679,13 +729,9 @@ async function buildWallpaperPicker(timer) {
     hidePhotoPreview();
   }
 
-  // Mark the current selection in the grid
   updateThemeGridSelection();
 }
 
-/**
- * Populate the theme grid with one swatch per built-in theme (no categories).
- */
 function buildThemeGrid() {
   const gridEl = document.getElementById('wp-theme-grid');
   gridEl.innerHTML = '';
@@ -711,14 +757,12 @@ function buildThemeGrid() {
   });
 }
 
-/** Refresh the selected/unselected state of all theme swatches */
 function updateThemeGridSelection() {
   document.querySelectorAll('.wp-theme-item').forEach(el => {
     el.classList.toggle('selected', el.dataset.themeKey === formWallpaperSelection);
   });
 }
 
-/** Switch between the Built-in / Your Photo tabs in the picker */
 function switchWallpaperTab(tabName) {
   document.querySelectorAll('.wp-tab').forEach(btn => {
     btn.classList.toggle('active', btn.dataset.tab === tabName);
@@ -728,10 +772,6 @@ function switchWallpaperTab(tabName) {
   document.getElementById('wp-panel-photo').classList.toggle('hidden', tabName !== 'photo');
 }
 
-/**
- * Show the photo preview in the form (once a photo is chosen or already set).
- * @param {string} dataUrl
- */
 function showPhotoPreview(dataUrl, transform = null) {
   const previewEl = document.getElementById('wp-photo-preview');
   const uploadEl  = document.getElementById('wp-upload-label');
@@ -740,11 +780,9 @@ function showPhotoPreview(dataUrl, transform = null) {
   uploadEl.classList.add('hidden');
 
   if (transform) {
-    // Show a cropped thumbnail reflecting the saved transform
     updatePhotoPreviewThumbnail(dataUrl, transform);
   } else {
-    const imgEl = document.getElementById('wp-preview-img');
-    imgEl.src = dataUrl;
+    document.getElementById('wp-preview-img').src = dataUrl;
   }
 }
 
@@ -762,32 +800,12 @@ function hidePhotoPreview() {
 
 /* ════════════════════════════════════════════════════
    MESSAGE SYSTEM FORM HELPERS
-
-   Each timer can have multiple messages. Each message:
-     text:       string  -- the message to display
-     daysBefore: number  -- start showing this many days
-                           before the milestone date
-     milestoneKey: string -- which milestone it's tied to
-                            (used to compute the target date)
-
-   Messages are stored on the timer as:
-     messages: [{ text, daysBefore, milestoneKey }]
-
-   On the detail screen, we compute which messages are
-   currently active and display the most relevant one
-   (closest upcoming milestone) below the time display.
 ════════════════════════════════════════════════════ */
 
-/**
- * Render the message rows in the form.
- * @param {Array} messages
- * @param {object|null} timer
- */
 function renderMessageRows(messages, timer = null) {
   const container = document.getElementById('message-list');
   container.innerHTML = '';
 
-  // Show count above the list
   const countEl = document.getElementById('message-count');
   if (countEl) countEl.textContent = `${messages.length} of 5`;
 
@@ -800,7 +818,6 @@ function renderMessageRows(messages, timer = null) {
     const row = document.createElement('div');
     row.className = 'message-row';
 
-    // Build trigger label from the date
     const triggerLabel = msg.triggerDate ? `\uD83D\uDCC5 ${formatDate(msg.triggerDate)}` : 'No date set';
 
     row.innerHTML = `
@@ -822,24 +839,16 @@ function renderMessageRows(messages, timer = null) {
   });
 }
 
-/** Get current message list from the form data attribute. */
 function getFormMessages() {
   const raw = document.getElementById('message-list').dataset.messages;
   return raw ? JSON.parse(raw) : [];
 }
 
-/** Set message list and re-render. */
 function setFormMessages(messages, timer = null) {
   document.getElementById('message-list').dataset.messages = JSON.stringify(messages);
   renderMessageRows(messages, timer);
 }
 
-/**
- * Add a new message from the form inputs.
- * Supports two trigger types:
- *   - 'milestone': tied to a preset or custom milestone threshold
- *   - 'date': tied to a specific calendar date
- */
 function addMessageToForm() {
   const textEl        = document.getElementById('input-message-text');
   const triggerDateEl = document.getElementById('input-message-date');
@@ -860,10 +869,7 @@ function addMessageToForm() {
   textEl.focus();
 }
 
-/** Reference to the timer being edited — needed for milestone dropdown in messages. */
 let formEditingTimer = null;
-
-// -- Form read / submit / delete --
 
 function readFormValues() {
   const name = document.getElementById('input-name').value.trim();
@@ -887,8 +893,7 @@ async function handleFormSubmit(event) {
   if (editingTimerId) {
     const index = appState.timers.findIndex(t => t.id === editingTimerId);
     if (index !== -1) {
-      const existing    = appState.timers[index];
-      const dateChanged = existing.date !== values.date;
+      const existing = appState.timers[index];
       appState.timers[index] = {
         ...existing,
         ...values,
@@ -911,12 +916,10 @@ async function handleFormSubmit(event) {
     savedId = newTimer.id;
   }
 
-  // Save the pending photo to IndexedDB if one was chosen
   if (formPendingPhotoBlob && values.wallpaper === 'photo') {
     await savePhoto(savedId, formPendingPhotoBlob);
   }
 
-  // If the user switched away from photo, clean up any old stored photo
   if (values.wallpaper !== 'photo') {
     await deletePhoto(savedId);
   }
@@ -930,7 +933,7 @@ async function deleteTimer() {
   if (!editingTimerId) return;
   if (!confirm('Delete this timer? This cannot be undone.')) return;
 
-  await deletePhoto(editingTimerId); // clean up any stored photo
+  await deletePhoto(editingTimerId);
   appState.timers = appState.timers.filter(t => t.id !== editingTimerId);
   if (appState.activeTimerId === editingTimerId) appState.activeTimerId = null;
 
@@ -943,25 +946,17 @@ async function deleteTimer() {
 /* ════════════════════════════════════════════════════
    10b. EXPORT & IMPORT
 
-   Export: serialise the timers array to a JSON file
-   and trigger a download via a temporary <a> element.
-   Photos are NOT included — they live in IndexedDB
-   and are intentionally excluded to keep the file small.
+   Export: serialise the timers array to a downloadable
+   JSON file. Photos are excluded to keep the file small.
 
-   Import: read a JSON file chosen by the user, validate
-   it, then ask whether to replace all timers or merge.
-   Merging skips any timer whose ID already exists, so
-   re-importing the same backup is safe.
-
-   The HTML you need to add (see instructions below):
-     <button id="btn-export">Export</button>
-     <button id="btn-import">Import</button>
-     <input type="file" id="input-import-file" accept=".json" style="display:none">
+   Import: read a JSON backup file, then ask the user
+   whether to replace all timers or merge (skipping any
+   timer whose ID already exists).
 ════════════════════════════════════════════════════ */
 
 /**
  * Export all timer metadata to a downloadable JSON file.
- * The file is named milestone-backup-YYYY-MM-DD.json.
+ * Named milestone-backup-YYYY-MM-DD.json.
  * Photos are excluded (stored separately in IndexedDB).
  */
 function exportTimers() {
@@ -970,9 +965,6 @@ function exportTimers() {
     return;
   }
 
-  // Build the export payload — timer metadata only, no photo blobs.
-  // If a timer used a photo wallpaper, we reset it to 'none' in the
-  // export since the photo itself is not included.
   const payload = {
     exportedAt: new Date().toISOString(),
     version:    1,
@@ -983,57 +975,46 @@ function exportTimers() {
       mode:      t.mode,
       wallpaper: t.wallpaper === 'photo' ? 'none' : (t.wallpaper || 'none'),
       messages:  t.messages || [],
-      // photoTransform intentionally excluded — meaningless without the photo
     })),
   };
 
-  // Serialise to pretty-printed JSON
-  const json = JSON.stringify(payload, null, 2);
-  const blob = new Blob([json], { type: 'application/json' });
-  const url  = URL.createObjectURL(blob);
-
-  // Build a filename with today's date for easy identification
-  const today    = new Date().toISOString().slice(0, 10); // "YYYY-MM-DD"
+  const json     = JSON.stringify(payload, null, 2);
+  const blob     = new Blob([json], { type: 'application/json' });
+  const url      = URL.createObjectURL(blob);
+  const today    = new Date().toISOString().slice(0, 10);
   const filename = `milestone-backup-${today}.json`;
 
-  // Trigger the browser download via a temporary invisible link
   const a = document.createElement('a');
   a.href     = url;
   a.download = filename;
   document.body.appendChild(a);
   a.click();
   document.body.removeChild(a);
-
-  // Release the object URL to free memory
   URL.revokeObjectURL(url);
 }
 
 /**
- * Open the hidden file picker so the user can choose a backup file.
- * The actual import logic runs in handleImportFile() once a file is chosen.
+ * Open the hidden file picker so the user can choose a backup JSON file.
  */
 function importTimers() {
   document.getElementById('input-import-file').click();
 }
 
 /**
- * Handle the file chosen by the user for import.
+ * Handle the file chosen for import.
  * Validates the JSON, then asks: replace all or merge?
- * Merge skips timers whose ID already exists — safe to re-import.
- * @param {Event} event - the change event from the file input
+ * @param {Event} event
  */
 function handleImportFile(event) {
   const file = event.target.files && event.target.files[0];
   if (!file) return;
 
-  // Reset the input so the same file can be chosen again if needed
   event.target.value = '';
 
   const reader = new FileReader();
   reader.onload = (e) => {
     let payload;
 
-    // Attempt to parse the JSON — show a friendly error if it fails
     try {
       payload = JSON.parse(e.target.result);
     } catch {
@@ -1041,7 +1022,6 @@ function handleImportFile(event) {
       return;
     }
 
-    // Basic structure check
     if (!payload.timers || !Array.isArray(payload.timers)) {
       alert('This file does not look like a Milestone Counter backup.');
       return;
@@ -1053,9 +1033,6 @@ function handleImportFile(event) {
       return;
     }
 
-    // Ask the user how to handle the import.
-    // OK  = replace everything with the backup
-    // Cancel = merge (add only timers not already present)
     const replace = confirm(
       `Found ${count} timer${count !== 1 ? 's' : ''} in the backup.\n\n` +
       `OK     = Replace all current timers with the backup.\n` +
@@ -1063,10 +1040,8 @@ function handleImportFile(event) {
     );
 
     if (replace) {
-      // Replace: overwrite the entire timers list
       appState.timers = payload.timers;
     } else {
-      // Merge: only add timers whose ID is not already present
       const existingIds = new Set(appState.timers.map(t => t.id));
       const newTimers   = payload.timers.filter(t => !existingIds.has(t.id));
 
@@ -1089,64 +1064,25 @@ function handleImportFile(event) {
 
 /* ════════════════════════════════════════════════════
    11. PHOTO POSITION & ZOOM EDITOR
-
-   When the user taps the photo preview, a full-screen
-   editor opens. They can drag to reposition and pinch
-   to zoom. The result is stored as a transform object:
-     { x: number, y: number, scale: number }
-   where x/y are pixel offsets from the image centre
-   and scale is a multiplier (1.0 = fit-to-viewport).
-
-   We store this transform in the timer's metadata in
-   localStorage so it persists across sessions.
-
-   Architecture:
-    - editorState holds all mutable editor variables
-    - openPhotoEditor() sets up the image and restores
-      any previously saved transform
-    - Pointer events handle both mouse (desktop) and
-      touch (iPhone) via the unified PointerEvent API
-    - Pinch zoom uses the distance between two active
-      pointer points
-    - constrainTransform() keeps the image covering the
-      viewport at all times (no empty edges showing)
-    - donePhotoEditor() saves the transform and renders
-      a preview thumbnail using an off-screen canvas
 ════════════════════════════════════════════════════ */
 
-/**
- * All mutable state for the photo editor.
- * Kept in one object so it's easy to reset on open/close.
- */
 let editorState = {
-  // The full-resolution image data URL (from IndexedDB or new file)
-  dataUrl:      null,
-  // Current transform values
-  x:            0,      // horizontal offset in px (from centre)
-  y:            0,      // vertical offset in px (from centre)
-  scale:        1.0,    // zoom multiplier
-  // Minimum scale: computed on open so image always covers viewport
-  minScale:     1.0,
-  // Pointer tracking for drag and pinch
-  isDragging:   false,
-  lastX:        0,
-  lastY:        0,
-  // Pinch tracking: store both pointer positions by ID
-  pointers:     {},     // { pointerId: { x, y } }
-  lastPinchDist: null,  // distance between two fingers at last event
+  dataUrl:       null,
+  x:             0,
+  y:             0,
+  scale:         1.0,
+  minScale:      1.0,
+  isDragging:    false,
+  lastX:         0,
+  lastY:         0,
+  pointers:      {},
+  lastPinchDist: null,
 };
 
-/**
- * Open the photo editor overlay for the current photo.
- * Loads the image, restores any saved transform, then shows the overlay.
- * @param {string} dataUrl - full-res photo data URL
- * @param {{ x:number, y:number, scale:number }|null} savedTransform
- */
 function openPhotoEditor(dataUrl, savedTransform) {
-  const overlay  = document.getElementById('photo-editor-overlay');
-  const imgEl    = document.getElementById('photo-editor-img');
+  const overlay = document.getElementById('photo-editor-overlay');
+  const imgEl   = document.getElementById('photo-editor-img');
 
-  // Reset editor state
   editorState.dataUrl       = dataUrl;
   editorState.x             = savedTransform ? savedTransform.x     : 0;
   editorState.y             = savedTransform ? savedTransform.y     : 0;
@@ -1155,17 +1091,14 @@ function openPhotoEditor(dataUrl, savedTransform) {
   editorState.pointers      = {};
   editorState.lastPinchDist = null;
 
-  // Set the image source; once loaded we can compute the min scale
   imgEl.src = dataUrl;
   imgEl.onload = () => {
     computeMinScale();
-    // If no saved transform, fit the image to cover the viewport by default
     if (!savedTransform) {
       editorState.scale = editorState.minScale;
       editorState.x = 0;
       editorState.y = 0;
     } else {
-      // Clamp saved scale in case the viewport size changed (e.g. rotated phone)
       editorState.scale = Math.max(editorState.scale, editorState.minScale);
     }
     applyEditorTransform();
@@ -1174,11 +1107,6 @@ function openPhotoEditor(dataUrl, savedTransform) {
   overlay.classList.remove('hidden');
 }
 
-/**
- * Compute the minimum scale so the image always covers the entire viewport.
- * We want cover behaviour (like background-size: cover), so we take the
- * larger of the two ratios (width and height).
- */
 function computeMinScale() {
   const viewport = document.getElementById('photo-editor-viewport');
   const imgEl    = document.getElementById('photo-editor-img');
@@ -1190,32 +1118,15 @@ function computeMinScale() {
 
   if (!iw || !ih) return;
 
-  // Scale needed to cover the viewport in each dimension
-  const scaleW = vw / iw;
-  const scaleH = vh / ih;
-
-  // Cover = fill viewport completely, so take the larger scale
-  editorState.minScale = Math.max(scaleW, scaleH);
+  editorState.minScale = Math.max(vw / iw, vh / ih);
 }
 
-/**
- * Apply the current editorState transform to the image element.
- * Uses CSS transform for smooth, GPU-accelerated movement.
- */
 function applyEditorTransform() {
-  const imgEl   = document.getElementById('photo-editor-img');
+  const imgEl = document.getElementById('photo-editor-img');
   const { x, y, scale } = editorState;
-
-  // The image is positioned at top:50% left:50% (its centre is at the viewport centre).
-  // We then apply a translate to move it, and a scale to zoom.
-  // translate(-50%,-50%) centres the image, then our x/y offsets move it.
   imgEl.style.transform = `translate(calc(-50% + ${x}px), calc(-50% + ${y}px)) scale(${scale})`;
 }
 
-/**
- * Constrain the transform so the image always covers the viewport.
- * Called after every drag or zoom gesture.
- */
 function constrainTransform() {
   const viewport = document.getElementById('photo-editor-viewport');
   const imgEl    = document.getElementById('photo-editor-img');
@@ -1225,8 +1136,6 @@ function constrainTransform() {
   const iw = imgEl.naturalWidth  * editorState.scale;
   const ih = imgEl.naturalHeight * editorState.scale;
 
-  // Maximum allowed offset: half the difference between image size and viewport size.
-  // When the image is smaller than the viewport in a dimension, clamp to 0.
   const maxX = Math.max(0, (iw - vw) / 2);
   const maxY = Math.max(0, (ih - vh) / 2);
 
@@ -1234,43 +1143,21 @@ function constrainTransform() {
   editorState.y = Math.max(-maxY, Math.min(maxY, editorState.y));
 }
 
-/** Save the current editor transform and close the overlay. */
 function donePhotoEditor() {
-  const transform = {
-    x:     editorState.x,
-    y:     editorState.y,
-    scale: editorState.scale,
-  };
-
-  // Store the transform for use at form submit time
+  const transform = { x: editorState.x, y: editorState.y, scale: editorState.scale };
   formPendingPhotoTransform = transform;
-
-  // Update the form preview thumbnail to reflect the new crop
   updatePhotoPreviewThumbnail(editorState.dataUrl, transform);
-
   document.getElementById('photo-editor-overlay').classList.add('hidden');
 }
 
-/** Close the editor without saving changes. */
 function cancelPhotoEditor() {
   document.getElementById('photo-editor-overlay').classList.add('hidden');
 }
 
-/**
- * Render a small preview thumbnail in the form that reflects the
- * current position/zoom, so the user can see their crop before saving.
- *
- * We draw onto an off-screen canvas at a small size, then use that
- * as the src of the preview image. This is purely cosmetic.
- *
- * @param {string} dataUrl
- * @param {{ x: number, y: number, scale: number }} transform
- */
 function updatePhotoPreviewThumbnail(dataUrl, transform) {
   const previewImg = document.getElementById('wp-preview-img');
   const viewport   = document.getElementById('photo-editor-viewport');
 
-  // Draw a small (360 x aspect-correct height) canvas representing the crop
   const canvas  = document.createElement('canvas');
   const vw      = viewport.clientWidth  || 360;
   const vh      = viewport.clientHeight || 640;
@@ -1281,31 +1168,22 @@ function updatePhotoPreviewThumbnail(dataUrl, transform) {
 
   const img = new Image();
   img.onload = () => {
-    const scale   = transform.scale;
-    const scaledW = img.naturalWidth  * scale;
-    const scaledH = img.naturalHeight * scale;
-
-    const dw = canvas.width;
-    const dh = canvas.height;
-
-    // The image centre in viewport space, accounting for our x/y offset
+    const scale      = transform.scale;
+    const scaledW    = img.naturalWidth  * scale;
+    const scaledH    = img.naturalHeight * scale;
+    const dw         = canvas.width;
+    const dh         = canvas.height;
     const imgCentreX = vw / 2 + transform.x;
     const imgCentreY = vh / 2 + transform.y;
-
-    // Top-left of the image in viewport space
-    const imgLeft = imgCentreX - scaledW / 2;
-    const imgTop  = imgCentreY - scaledH / 2;
-
-    // Scale factor from viewport to canvas
-    const canvasScaleX = dw / vw;
-    const canvasScaleY = dh / vh;
+    const imgLeft    = imgCentreX - scaledW / 2;
+    const imgTop     = imgCentreY - scaledH / 2;
 
     ctx.drawImage(
       img,
-      imgLeft  * canvasScaleX,
-      imgTop   * canvasScaleY,
-      scaledW  * canvasScaleX,
-      scaledH  * canvasScaleY,
+      imgLeft  * (dw / vw),
+      imgTop   * (dh / vh),
+      scaledW  * (dw / vw),
+      scaledH  * (dh / vh),
     );
 
     previewImg.src = canvas.toDataURL('image/jpeg', 0.85);
@@ -1313,14 +1191,6 @@ function updatePhotoPreviewThumbnail(dataUrl, transform) {
   img.src = dataUrl;
 }
 
-/* -- Pointer event handlers (unified mouse + touch) -- */
-
-/**
- * Get the distance between two pointer positions (for pinch zoom).
- * @param {{ x:number, y:number }} p1
- * @param {{ x:number, y:number }} p2
- * @returns {number}
- */
 function pointerDistance(p1, p2) {
   const dx = p2.x - p1.x;
   const dy = p2.y - p1.y;
@@ -1329,24 +1199,18 @@ function pointerDistance(p1, p2) {
 
 function onEditorPointerDown(e) {
   e.preventDefault();
-  const viewport = document.getElementById('photo-editor-viewport');
-  viewport.setPointerCapture(e.pointerId);
-
+  document.getElementById('photo-editor-viewport').setPointerCapture(e.pointerId);
   editorState.pointers[e.pointerId] = { x: e.clientX, y: e.clientY };
 
-  const pointerCount = Object.keys(editorState.pointers).length;
-
-  if (pointerCount === 1) {
-    // Single finger — start drag
-    editorState.isDragging = true;
-    editorState.lastX = e.clientX;
-    editorState.lastY = e.clientY;
+  const count = Object.keys(editorState.pointers).length;
+  if (count === 1) {
+    editorState.isDragging    = true;
+    editorState.lastX         = e.clientX;
+    editorState.lastY         = e.clientY;
     editorState.lastPinchDist = null;
-  } else if (pointerCount === 2) {
-    // Two fingers — start pinch; cancel drag mode
-    editorState.isDragging = false;
-    const pts = Object.values(editorState.pointers);
-    editorState.lastPinchDist = pointerDistance(pts[0], pts[1]);
+  } else if (count === 2) {
+    editorState.isDragging    = false;
+    editorState.lastPinchDist = pointerDistance(...Object.values(editorState.pointers));
   }
 }
 
@@ -1354,37 +1218,27 @@ function onEditorPointerMove(e) {
   e.preventDefault();
   editorState.pointers[e.pointerId] = { x: e.clientX, y: e.clientY };
 
-  const pointerCount = Object.keys(editorState.pointers).length;
+  const count = Object.keys(editorState.pointers).length;
 
-  if (pointerCount === 1 && editorState.isDragging) {
-    // -- Drag --
-    const dx = e.clientX - editorState.lastX;
-    const dy = e.clientY - editorState.lastY;
-
-    editorState.x += dx;
-    editorState.y += dy;
-
+  if (count === 1 && editorState.isDragging) {
+    editorState.x += e.clientX - editorState.lastX;
+    editorState.y += e.clientY - editorState.lastY;
     editorState.lastX = e.clientX;
     editorState.lastY = e.clientY;
-
     constrainTransform();
     applyEditorTransform();
 
-  } else if (pointerCount === 2) {
-    // -- Pinch zoom --
-    const pts = Object.values(editorState.pointers);
-    const dist = pointerDistance(pts[0], pts[1]);
-
+  } else if (count === 2) {
+    const dist = pointerDistance(...Object.values(editorState.pointers));
     if (editorState.lastPinchDist !== null) {
       const ratio = dist / editorState.lastPinchDist;
       editorState.scale = Math.max(
         editorState.minScale,
-        Math.min(editorState.scale * ratio, editorState.minScale * 8) // max 8x zoom
+        Math.min(editorState.scale * ratio, editorState.minScale * 8)
       );
       constrainTransform();
       applyEditorTransform();
     }
-
     editorState.lastPinchDist = dist;
   }
 }
@@ -1396,11 +1250,10 @@ function onEditorPointerUp(e) {
     editorState.isDragging    = false;
     editorState.lastPinchDist = null;
   } else if (Object.keys(editorState.pointers).length === 1) {
-    // One finger lifted during pinch — switch back to drag with remaining finger
     const remaining = Object.values(editorState.pointers)[0];
-    editorState.isDragging = true;
-    editorState.lastX = remaining.x;
-    editorState.lastY = remaining.y;
+    editorState.isDragging    = true;
+    editorState.lastX         = remaining.x;
+    editorState.lastY         = remaining.y;
     editorState.lastPinchDist = null;
   }
 }
@@ -1408,24 +1261,8 @@ function onEditorPointerUp(e) {
 
 /* ════════════════════════════════════════════════════
    11b. DETAIL SCREEN MESSAGE DISPLAY
-
-   Each timer can have messages tied to milestones.
-   When the app is open and we're within the "daysBefore"
-   window before a milestone, the message is shown on
-   the detail screen below the time display.
-
-   Only one message is shown at a time — the one tied
-   to the nearest upcoming milestone.
 ════════════════════════════════════════════════════ */
 
-/**
- * Compute which message (if any) should be active right now.
- * Returns the message tied to the most recently passed trigger date.
- *
- * @param {object} timer
- * @param {number} totalDays - elapsed (countup) or remaining (countdown)
- * @returns {{ text, daysUntil, triggerLabel }|null}
- */
 function getActiveMessage(timer, totalDays) {
   const messages = timer.messages || [];
   if (messages.length === 0) return null;
@@ -1439,23 +1276,14 @@ function getActiveMessage(timer, totalDays) {
   for (const msg of messages) {
     if (!msg.text) continue;
 
-    let daysUntil;
-    let triggerLabel;
+    if (msg.triggerType !== 'date' || !msg.triggerDate) continue;
 
-    if (msg.triggerType === 'date' && msg.triggerDate) {
-      // daysUntil = days from today until the trigger date
-      // Negative means the date has already passed
-      const triggerDay = new Date(msg.triggerDate + 'T00:00:00');
-      daysUntil    = Math.round((triggerDay - today) / (1000 * 60 * 60 * 24));
-      triggerLabel = `\uD83D\uDCC5 ${formatDate(msg.triggerDate)}`;
-    } else {
-      continue; // date trigger required
-    }
+    const triggerDay  = new Date(msg.triggerDate + 'T00:00:00');
+    const daysUntil   = Math.round((triggerDay - today) / (1000 * 60 * 60 * 24));
+    const triggerLabel = `\uD83D\uDCC5 ${formatDate(msg.triggerDate)}`;
 
-    // Show the message on or after the trigger date (daysUntil <= 0)
-    const inWindow = daysUntil <= 0;
-
-    if (inWindow && daysUntil < bestDaysUntil) {
+    // Show message on or after the trigger date
+    if (daysUntil <= 0 && daysUntil < bestDaysUntil) {
       bestDaysUntil = daysUntil;
       best = { text: msg.text, daysUntil, triggerLabel };
     }
@@ -1464,12 +1292,6 @@ function getActiveMessage(timer, totalDays) {
   return best;
 }
 
-/**
- * Update the message display on the detail screen.
- * Shows the active message below the time display, or hides it.
- * @param {object} timer
- * @param {number} totalDays
- */
 function updateDetailMessage(timer, totalDays) {
   const el = document.getElementById('detail-message');
   if (!el) return;
@@ -1477,16 +1299,14 @@ function updateDetailMessage(timer, totalDays) {
   const active = getActiveMessage(timer, totalDays);
 
   if (active) {
-    const dayStr = active.daysUntil === 0
-      ? 'Today'
-      : `Since ${active.triggerLabel}`;
-
+    const dayStr = active.daysUntil === 0 ? 'Today' : `Since ${active.triggerLabel}`;
     el.innerHTML = `<span class="detail-message-text">${escapeHtml(active.text)}</span><span class="detail-message-when">${dayStr} \u2013 ${active.triggerLabel}</span>`;
     el.classList.remove('hidden');
   } else {
     el.classList.add('hidden');
   }
 }
+
 
 /* ════════════════════════════════════════════════════
    12. THEME (light/dark)
@@ -1509,11 +1329,6 @@ function toggleTheme() {
    13. UTILITY
 ════════════════════════════════════════════════════ */
 
-/**
- * Convert a Blob to a base64 data URL.
- * @param {Blob} blob
- * @returns {Promise<string>}
- */
 function blobToDataUrl(blob) {
   return new Promise((resolve, reject) => {
     const reader  = new FileReader();
@@ -1545,7 +1360,6 @@ document.addEventListener('DOMContentLoaded', () => {
   document.getElementById('theme-toggle').addEventListener('click', toggleTheme);
 
   // -- Export / Import --
-  // These three elements must exist in your HTML (see note at bottom of this file).
   document.getElementById('btn-export').addEventListener('click', exportTimers);
   document.getElementById('btn-import').addEventListener('click', importTimers);
   document.getElementById('input-import-file').addEventListener('change', handleImportFile);
@@ -1559,6 +1373,9 @@ document.addEventListener('DOMContentLoaded', () => {
   document.getElementById('btn-edit-timer').addEventListener('click', () => {
     if (appState.activeTimerId) openFormScreen(appState.activeTimerId);
   });
+
+  // -- Share --
+  document.getElementById('btn-share-timer').addEventListener('click', shareTimer);
 
   // -- Form --
   document.getElementById('btn-form-cancel').addEventListener('click', () => {
@@ -1580,7 +1397,6 @@ document.addEventListener('DOMContentLoaded', () => {
     btn.addEventListener('click', () => switchWallpaperTab(btn.dataset.tab));
   });
 
-  // "No background" button
   document.getElementById('btn-wp-none').addEventListener('click', () => {
     formWallpaperSelection = 'none';
     formPendingPhotoBlob   = null;
@@ -1599,19 +1415,18 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     formPendingPhotoBlob      = file;
-    formPendingPhotoTransform = null; // reset transform for new photo
+    formPendingPhotoTransform = null;
     formWallpaperSelection    = 'photo';
     updateThemeGridSelection();
 
     const reader = new FileReader();
     reader.onload = (ev) => {
-      editorState.dataUrl = ev.target.result; // keep data URL ready for editor
+      editorState.dataUrl = ev.target.result;
       showPhotoPreview(ev.target.result, null);
     };
     reader.readAsDataURL(file);
   });
 
-  // Remove photo button
   document.getElementById('btn-wp-remove-photo').addEventListener('click', () => {
     formPendingPhotoBlob      = null;
     formPendingPhotoTransform = null;
@@ -1623,13 +1438,7 @@ document.addEventListener('DOMContentLoaded', () => {
   });
 
   // -- Photo editor --
-
-  // "Adjust position" button opens the full-screen editor
   document.getElementById('btn-wp-adjust-photo').addEventListener('click', async () => {
-    // Get the data URL from whichever source has it:
-    // 1. Already loaded this session (editorState.dataUrl)
-    // 2. Stored in IndexedDB from a previous session (existing timer)
-    // 3. A newly chosen file not yet saved (pending blob)
     let dataUrl = editorState.dataUrl;
 
     if (!dataUrl && editingTimerId) {
@@ -1648,15 +1457,13 @@ document.addEventListener('DOMContentLoaded', () => {
     openPhotoEditor(dataUrl, formPendingPhotoTransform);
   });
 
-  // Done / Cancel buttons in the editor header
   document.getElementById('btn-photo-editor-done').addEventListener('click', donePhotoEditor);
   document.getElementById('btn-photo-editor-cancel').addEventListener('click', cancelPhotoEditor);
 
-  // Pointer events on the editor viewport (handles mouse + touch)
   const editorViewport = document.getElementById('photo-editor-viewport');
-  editorViewport.addEventListener('pointerdown', onEditorPointerDown);
-  editorViewport.addEventListener('pointermove', onEditorPointerMove);
-  editorViewport.addEventListener('pointerup',   onEditorPointerUp);
+  editorViewport.addEventListener('pointerdown',   onEditorPointerDown);
+  editorViewport.addEventListener('pointermove',   onEditorPointerMove);
+  editorViewport.addEventListener('pointerup',     onEditorPointerUp);
   editorViewport.addEventListener('pointercancel', onEditorPointerUp);
 
   // -- Unit slider --
@@ -1689,20 +1496,3 @@ document.addEventListener('DOMContentLoaded', () => {
       .catch(err => console.warn('[Milestone] SW failed:', err));
   }
 });
-
-/*
-  ════════════════════════════════════════════════════
-  HTML CHANGES REQUIRED
-
-  Add these three elements somewhere on your list
-  screen (screen-list), e.g. near the "New Timer"
-  button in the header or footer area:
-
-    <button id="btn-export">Export</button>
-    <button id="btn-import">Import</button>
-    <input type="file" id="input-import-file" accept=".json" style="display:none">
-
-  The file input is invisible — it is triggered
-  programmatically when the Import button is tapped.
-  ════════════════════════════════════════════════════
-*/
