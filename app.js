@@ -1,20 +1,12 @@
 /**
  * MILESTONE COUNTER — app.js
  *
- * New in this version:
- *  - Wallpaper support: each timer can have a full-bleed background image
- *  - Built-in CSS themes (no image files — pure gradients, no copyright issues)
- *  - User photos stored in IndexedDB (can hold binary data, unlike localStorage)
- *  - localStorage still holds all timer metadata; IndexedDB only holds image blobs
- *  - Export / Import: back up and restore timer metadata as a JSON file
- *  - Share: send a timer summary via the iOS native share sheet (email, text, etc.)
- *
- * Why IndexedDB for photos?
- *  localStorage only stores strings, and images as base64 strings balloon in
- *  size — a 1 MB photo becomes ~1.37 MB of string. Worse, localStorage has a
- *  ~5 MB quota in most browsers; one photo would nearly fill it.
- *  IndexedDB stores binary blobs efficiently, has a much larger quota (typically
- *  hundreds of MB), and is the standard PWA solution for offline media storage.
+ * Changes in this version:
+ *  - Large centred timer name displayed below the countdown digits
+ *  - Export now uses the iOS native share sheet (navigator.share with a File
+ *    object) so it works correctly in Safari on iPhone. The <a download> trick
+ *    does not work in Safari/iOS PWAs. Falls back to clipboard on desktop.
+ *  - Share timer function unchanged
  */
 
 'use strict';
@@ -22,10 +14,6 @@
 
 /* ════════════════════════════════════════════════════
    1. BUILT-IN WALLPAPER THEMES
-   These are pure CSS background strings — no image
-   files required, no copyright concerns, works offline.
-   Each theme has a key, a category, a display label,
-   and a `css` string that goes into background: ...
 ════════════════════════════════════════════════════ */
 
 const WALLPAPER_THEMES = [
@@ -61,22 +49,10 @@ const WALLPAPER_THEMES = [
   },
 ];
 
-/**
- * Get a theme object by its key.
- * @param {string} key
- * @returns {object|undefined}
- */
 function getThemeByKey(key) {
   return WALLPAPER_THEMES.find(t => t.key === key);
 }
 
-/**
- * Get the CSS background string for a timer's current wallpaper setting.
- * Returns null if no wallpaper is set.
- * @param {object} timer
- * @param {string|null} photoDataUrl - base64 data URL if a user photo is loaded
- * @returns {string|null}
- */
 function getWallpaperCss(timer, photoDataUrl = null) {
   if (timer.wallpaper === 'photo' && photoDataUrl) {
     return `url('${photoDataUrl}') center / cover no-repeat`;
@@ -91,63 +67,32 @@ function getWallpaperCss(timer, photoDataUrl = null) {
 
 /* ════════════════════════════════════════════════════
    2. INDEXEDDB — Photo Storage
-   We store user photos as Blob objects in IndexedDB.
-   The key is the timer's ID, so each timer can have
-   its own photo.
-
-   Why not store photos in localStorage?
-    - localStorage only holds strings
-    - base64-encoding a 1 MB photo creates a ~1.37 MB string
-    - total localStorage quota is ~5 MB in Safari — one photo fills it
-    - IndexedDB stores raw binary, is much more efficient, and has
-      a far larger quota (limited by device storage, typically GBs)
 ════════════════════════════════════════════════════ */
 
 const IDB_NAME    = 'milestone_photos';
 const IDB_VERSION = 1;
 const IDB_STORE   = 'photos';
 
-/** @type {IDBDatabase|null} */
 let idb = null;
 
-/**
- * Open (or create) the IndexedDB database.
- * Returns a Promise that resolves when the DB is ready.
- * @returns {Promise<IDBDatabase>}
- */
 function openDatabase() {
   return new Promise((resolve, reject) => {
     if (idb) { resolve(idb); return; }
 
     const request = indexedDB.open(IDB_NAME, IDB_VERSION);
 
-    // onupgradeneeded fires on first open or version bump.
-    // This is where we create the object store (equivalent to a table).
     request.onupgradeneeded = (event) => {
       const db = event.target.result;
       if (!db.objectStoreNames.contains(IDB_STORE)) {
-        db.createObjectStore(IDB_STORE); // key-value store; we use timer ID as key
+        db.createObjectStore(IDB_STORE);
       }
     };
 
-    request.onsuccess = (event) => {
-      idb = event.target.result;
-      resolve(idb);
-    };
-
-    request.onerror = (event) => {
-      console.warn('[Milestone] IndexedDB open failed:', event.target.error);
-      reject(event.target.error);
-    };
+    request.onsuccess = (event) => { idb = event.target.result; resolve(idb); };
+    request.onerror   = (event) => { console.warn('[Milestone] IndexedDB open failed:', event.target.error); reject(event.target.error); };
   });
 }
 
-/**
- * Save a photo Blob to IndexedDB, keyed by timer ID.
- * @param {string} timerId
- * @param {Blob} blob
- * @returns {Promise<void>}
- */
 async function savePhoto(timerId, blob) {
   const db = await openDatabase();
   return new Promise((resolve, reject) => {
@@ -159,15 +104,9 @@ async function savePhoto(timerId, blob) {
   });
 }
 
-/**
- * Load a photo from IndexedDB as a data URL string (usable in CSS/img src).
- * Returns null if no photo exists for this timer.
- * @param {string} timerId
- * @returns {Promise<string|null>}
- */
 async function loadPhoto(timerId) {
   try {
-    const db = await openDatabase();
+    const db   = await openDatabase();
     const blob = await new Promise((resolve, reject) => {
       const tx      = db.transaction(IDB_STORE, 'readonly');
       const store   = tx.objectStore(IDB_STORE);
@@ -178,10 +117,9 @@ async function loadPhoto(timerId) {
 
     if (!blob) return null;
 
-    // Convert Blob to a data URL so it can be used in CSS background-image
     return new Promise((resolve, reject) => {
-      const reader  = new FileReader();
-      reader.onload = () => resolve(reader.result);
+      const reader   = new FileReader();
+      reader.onload  = () => resolve(reader.result);
       reader.onerror = reject;
       reader.readAsDataURL(blob);
     });
@@ -191,12 +129,6 @@ async function loadPhoto(timerId) {
   }
 }
 
-/**
- * Delete a photo from IndexedDB.
- * Called when the user removes their photo or deletes a timer.
- * @param {string} timerId
- * @returns {Promise<void>}
- */
 async function deletePhoto(timerId) {
   try {
     const db = await openDatabase();
@@ -221,22 +153,10 @@ async function deletePhoto(timerId) {
 
 /* ════════════════════════════════════════════════════
    4. STATE & PERSISTENCE
-   Timers (metadata) -> localStorage
-   Photos (binary)   -> IndexedDB
 ════════════════════════════════════════════════════ */
 
 const STORAGE_KEY = 'milestoneCounter_v1';
 
-/**
- * Timer shape:
- * {
- *   id:               string
- *   name:             string
- *   date:             string           "YYYY-MM-DD"
- *   mode:             'countdown'|'countup'
- *   wallpaper:        string|'none'    theme key, 'photo', or 'none'
- * }
- */
 let appState = {
   timers: [],
   theme: 'dark',
@@ -271,15 +191,13 @@ function generateId() {
 ════════════════════════════════════════════════════ */
 
 function getTimerValues(timer) {
-  const now    = new Date();
-  // FIX: normalise 'now' to midnight so that time-of-day does not affect
-  // date arithmetic. Without this, on an exact anniversary the year
-  // comparison overshoots (e.g. 2027-03-26T17:04 > 2027-03-26T00:00)
-  // causing years to decrement to 0 and months/days to go negative.
+  const now = new Date();
+  // Normalise to midnight so time-of-day never affects date arithmetic.
+  // Without this, on an exact anniversary the comparison overshoots,
+  // causing years to roll back to 0 and months/days to go negative.
   now.setHours(0, 0, 0, 0);
 
-  const target = new Date(timer.date + 'T00:00:00');
-
+  const target   = new Date(timer.date + 'T00:00:00');
   const fromDate = timer.mode === 'countup' ? target : now;
   const toDate   = timer.mode === 'countup' ? now    : target;
 
@@ -302,12 +220,10 @@ function getTimerValues(timer) {
   afterMonths.setMonth(afterMonths.getMonth() + months);
 
   // -- Weeks and days after months --
-  const remainingMs   = toDate - afterMonths;
-  const remainingDays = Math.floor(remainingMs / (1000 * 60 * 60 * 24));
-  const weeks = Math.floor(remainingDays / 7);
-  const days  = remainingDays % 7;
-
-  const totalDays = Math.floor((toDate - fromDate) / (1000 * 60 * 60 * 24));
+  const remainingDays = Math.floor((toDate - afterMonths) / (1000 * 60 * 60 * 24));
+  const weeks         = Math.floor(remainingDays / 7);
+  const days          = remainingDays % 7;
+  const totalDays     = Math.floor((toDate - fromDate) / (1000 * 60 * 60 * 24));
 
   return { years, months, weeks, days, totalDays, isExpired };
 }
@@ -345,10 +261,7 @@ function startTicker() {
 }
 
 function stopTicker() {
-  if (tickerHandle !== null) {
-    clearInterval(tickerHandle);
-    tickerHandle = null;
-  }
+  if (tickerHandle !== null) { clearInterval(tickerHandle); tickerHandle = null; }
 }
 
 
@@ -371,7 +284,6 @@ function renderTimerList() {
 
     const modeVerb = timer.mode === 'countdown' ? 'Until' : 'Since';
 
-    // Left-edge colour strip: use the theme accent colour, or amber for photos, or dim for none
     let thumbStyle = 'background: var(--border);';
     if (timer.wallpaper && timer.wallpaper !== 'none') {
       if (timer.wallpaper === 'photo') {
@@ -404,14 +316,6 @@ function renderTimerList() {
    9. RENDERING — Detail Screen
 ════════════════════════════════════════════════════ */
 
-/**
- * Render a photo with a position/zoom transform onto a canvas and return
- * a data URL. Used to apply the user's crop to the detail screen wallpaper.
- *
- * @param {string} dataUrl - original photo
- * @param {{ x: number, y: number, scale: number }} transform
- * @returns {Promise<string>} - data URL of the cropped image
- */
 async function applyTransformToCanvas(dataUrl, transform) {
   return new Promise((resolve) => {
     const img = new Image();
@@ -419,22 +323,17 @@ async function applyTransformToCanvas(dataUrl, transform) {
       const vw = window.innerWidth;
       const vh = window.innerHeight;
 
-      const canvas = document.createElement('canvas');
+      const canvas  = document.createElement('canvas');
       canvas.width  = vw;
       canvas.height = vh;
-      const ctx = canvas.getContext('2d');
+      const ctx     = canvas.getContext('2d');
 
-      const scaledW = img.naturalWidth  * transform.scale;
-      const scaledH = img.naturalHeight * transform.scale;
-
+      const scaledW    = img.naturalWidth  * transform.scale;
+      const scaledH    = img.naturalHeight * transform.scale;
       const imgCentreX = vw / 2 + transform.x;
       const imgCentreY = vh / 2 + transform.y;
 
-      const imgLeft = imgCentreX - scaledW / 2;
-      const imgTop  = imgCentreY - scaledH / 2;
-
-      ctx.drawImage(img, imgLeft, imgTop, scaledW, scaledH);
-
+      ctx.drawImage(img, imgCentreX - scaledW / 2, imgCentreY - scaledH / 2, scaledW, scaledH);
       resolve(canvas.toDataURL('image/jpeg', 0.92));
     };
     img.onerror = () => resolve(dataUrl);
@@ -486,7 +385,10 @@ async function openDetailScreen(timerId) {
   const timer = appState.timers.find(t => t.id === timerId);
   if (!timer) return;
 
-  document.getElementById('detail-timer-name').textContent = timer.name;
+  // Populate both the small header name and the large name below the countdown
+  document.getElementById('detail-timer-name').textContent       = timer.name;
+  document.getElementById('detail-timer-name-large').textContent = timer.name;
+
   document.getElementById('detail-mode-label').textContent =
     timer.mode === 'countdown' ? 'Counting down to' : 'Counting up from';
   document.getElementById('detail-target-date').textContent = formatDate(timer.date);
@@ -504,17 +406,11 @@ async function openDetailScreen(timerId) {
 }
 
 /**
- * The slider position controls which unit is the largest displayed.
- * 0 = Years, 1 = Months, 2 = Weeks, 3 = Days
+ * Slider position: 0=Years, 1=Months, 2=Weeks, 3=Days.
+ * Units to the left of the chosen position display as 0.
  */
 let sliderPosition = 0;
 
-/**
- * Compute display values based on slider position.
- *
- * @param {{ years, months, weeks, days, totalDays, isExpired }} vals
- * @returns {{ dispYears, dispMonths, dispWeeks, dispDays }}
- */
 function applySlider(vals) {
   const { years, months, weeks, days, totalDays, isExpired } = vals;
   if (isExpired) return { dispYears: 0, dispMonths: 0, dispWeeks: 0, dispDays: 0 };
@@ -523,11 +419,11 @@ function applySlider(vals) {
     return { dispYears: years, dispMonths: months, dispWeeks: weeks, dispDays: days };
 
   } else if (sliderPosition === 1) {
-    // Months is largest — convert all years into months
-    const timer = appState.timers.find(t => t.id === appState.activeTimerId);
-    const now    = new Date();
+    // Months is largest — roll all years into months
+    const timer    = appState.timers.find(t => t.id === appState.activeTimerId);
+    const now      = new Date();
     now.setHours(0, 0, 0, 0);
-    const target = new Date(timer.date + 'T00:00:00');
+    const target   = new Date(timer.date + 'T00:00:00');
     const fromDate = timer.mode === 'countup' ? target : now;
     const toDate   = timer.mode === 'countup' ? now    : target;
 
@@ -540,21 +436,12 @@ function applySlider(vals) {
     afterMonths.setMonth(afterMonths.getMonth() + totalMonths);
     const remDays = Math.floor((toDate - afterMonths) / (1000 * 60 * 60 * 24));
 
-    return {
-      dispYears:  0,
-      dispMonths: totalMonths,
-      dispWeeks:  Math.floor(remDays / 7),
-      dispDays:   remDays % 7,
-    };
+    return { dispYears: 0, dispMonths: totalMonths, dispWeeks: Math.floor(remDays / 7), dispDays: remDays % 7 };
 
   } else if (sliderPosition === 2) {
-    // Weeks is largest
-    const totalWeeks = Math.floor(totalDays / 7);
-    const remDays    = totalDays % 7;
-    return { dispYears: 0, dispMonths: 0, dispWeeks: totalWeeks, dispDays: remDays };
+    return { dispYears: 0, dispMonths: 0, dispWeeks: Math.floor(totalDays / 7), dispDays: totalDays % 7 };
 
   } else {
-    // Days is largest
     return { dispYears: 0, dispMonths: 0, dispWeeks: 0, dispDays: totalDays };
   }
 }
@@ -579,30 +466,20 @@ function updateDetailDisplay() {
 /* ════════════════════════════════════════════════════
    9b. SHARE TIMER
 
-   Uses the Web Share API (navigator.share), which on
-   iOS opens the native share sheet — letting the user
-   send via Messages, Mail, AirDrop, WhatsApp, etc.
-
-   If the browser does not support navigator.share
-   (e.g. desktop Safari or Chrome on Mac), we fall back
-   to copying the text to the clipboard instead.
-
-   The shared text is a plain-language summary:
-     Anniversary
-     Counting down to 26 March 2027
-     11 months, 3 weeks and 5 days to go
+   Uses the Web Share API (navigator.share).
+   On iOS this opens the native share sheet — Messages,
+   Mail, AirDrop, WhatsApp, etc.
+   Falls back to clipboard copy on desktop browsers.
 ════════════════════════════════════════════════════ */
 
 /**
- * Build a readable time string from timer values.
- * e.g. "1 year, 2 months, 3 weeks and 4 days"
+ * Build a readable time string, e.g. "1 year, 2 months and 3 days".
  * Omits any unit that is zero.
- * @param {{ years, months, weeks, days, totalDays, isExpired }} vals
+ * @param {{ years, months, weeks, days }} vals
  * @returns {string}
  */
 function buildTimeString(vals) {
   const { years, months, weeks, days } = vals;
-
   const parts = [];
   if (years  > 0) parts.push(`${years} year${years   !== 1 ? 's' : ''}`);
   if (months > 0) parts.push(`${months} month${months !== 1 ? 's' : ''}`);
@@ -611,49 +488,37 @@ function buildTimeString(vals) {
 
   if (parts.length === 0) return 'today';
   if (parts.length === 1) return parts[0];
-
-  // Join with commas except the last pair which uses "and"
   return parts.slice(0, -1).join(', ') + ' and ' + parts[parts.length - 1];
 }
 
 /**
- * Share the currently viewed timer using the Web Share API.
- * Falls back to clipboard copy if the API is unavailable.
+ * Share the currently viewed timer via the native share sheet.
+ * Falls back to clipboard copy if the Web Share API is unavailable.
  */
 function shareTimer() {
   const timer = appState.timers.find(t => t.id === appState.activeTimerId);
   if (!timer) return;
 
-  const vals       = getTimerValues(timer);
-  const dateStr    = formatDate(timer.date);
-  const modeLabel  = timer.mode === 'countdown' ? 'Counting down to' : 'Counting up from';
-  const suffix     = timer.mode === 'countdown' ? ' to go' : ' so far';
+  const vals      = getTimerValues(timer);
+  const dateStr   = formatDate(timer.date);
+  const modeLabel = timer.mode === 'countdown' ? 'Counting down to' : 'Counting up from';
+  const suffix    = timer.mode === 'countdown' ? ' to go' : ' so far';
 
   let bodyText;
   if (vals.isExpired) {
     bodyText = `${timer.name}\n${modeLabel} ${dateStr}\nThis date has now passed.`;
   } else {
-    const timeStr = buildTimeString(vals);
-    bodyText = `${timer.name}\n${modeLabel} ${dateStr}\n${timeStr}${suffix}`;
+    bodyText = `${timer.name}\n${modeLabel} ${dateStr}\n${buildTimeString(vals)}${suffix}`;
   }
 
   if (navigator.share) {
-    // Use the native iOS/Android share sheet
-    navigator.share({
-      title: timer.name,
-      text:  bodyText,
-    }).catch(err => {
-      // AbortError just means the user dismissed the sheet — not a real error
-      if (err.name !== 'AbortError') {
-        console.warn('[Milestone] Share failed:', err);
-      }
+    navigator.share({ title: timer.name, text: bodyText }).catch(err => {
+      if (err.name !== 'AbortError') console.warn('[Milestone] Share failed:', err);
     });
   } else {
-    // Fallback for browsers without Web Share API: copy to clipboard
     navigator.clipboard.writeText(bodyText).then(() => {
       alert('Timer details copied to clipboard.');
     }).catch(() => {
-      // Last resort: show the text in an alert so it can be copied manually
       alert(bodyText);
     });
   }
@@ -664,34 +529,17 @@ function shareTimer() {
    10. RENDERING — Form Screen
 ════════════════════════════════════════════════════ */
 
-let editingTimerId = null;
-
-/**
- * The wallpaper selection the user is currently working with in the form.
- * 'none' | a theme key | 'photo'
- * @type {string}
- */
+let editingTimerId        = null;
 let formWallpaperSelection = 'none';
-
-/**
- * A pending photo Blob chosen in the file picker but not yet saved.
- * Held here so we can save it to IndexedDB at form submit time.
- * @type {Blob|null}
- */
-let formPendingPhotoBlob = null;
-
-/**
- * The position/zoom transform the user set in the photo editor.
- * @type {{ x: number, y: number, scale: number }|null}
- */
+let formPendingPhotoBlob   = null;
 let formPendingPhotoTransform = null;
 
 function openFormScreen(timerId = null) {
-  editingTimerId    = timerId;
-  formEditingTimer  = null;
-  const isEditing   = timerId !== null;
-  const timer       = isEditing ? appState.timers.find(t => t.id === timerId) : null;
-  formEditingTimer  = timer;
+  editingTimerId   = timerId;
+  formEditingTimer = null;
+  const isEditing  = timerId !== null;
+  const timer      = isEditing ? appState.timers.find(t => t.id === timerId) : null;
+  formEditingTimer = timer;
 
   document.getElementById('form-screen-title').textContent = isEditing ? 'Edit Timer' : 'New Timer';
   document.getElementById('input-name').value = timer ? timer.name : '';
@@ -773,11 +621,8 @@ function switchWallpaperTab(tabName) {
 }
 
 function showPhotoPreview(dataUrl, transform = null) {
-  const previewEl = document.getElementById('wp-photo-preview');
-  const uploadEl  = document.getElementById('wp-upload-label');
-
-  previewEl.classList.remove('hidden');
-  uploadEl.classList.add('hidden');
+  document.getElementById('wp-photo-preview').classList.remove('hidden');
+  document.getElementById('wp-upload-label').classList.add('hidden');
 
   if (transform) {
     updatePhotoPreviewThumbnail(dataUrl, transform);
@@ -793,7 +638,6 @@ function hidePhotoPreview() {
 }
 
 // -- Milestone checkbox builder --
-
 
 // -- Custom milestone list --
 
@@ -852,9 +696,8 @@ function setFormMessages(messages, timer = null) {
 function addMessageToForm() {
   const textEl        = document.getElementById('input-message-text');
   const triggerDateEl = document.getElementById('input-message-date');
-
-  const text        = textEl.value.trim();
-  const triggerDate = triggerDateEl ? triggerDateEl.value : '';
+  const text          = textEl.value.trim();
+  const triggerDate   = triggerDateEl ? triggerDateEl.value : '';
 
   if (!text)        { alert('Please enter a message.'); return; }
   if (!triggerDate) { alert('Please choose a date for this message.'); return; }
@@ -879,8 +722,7 @@ function readFormValues() {
   if (!name) { alert('Please give your timer a name.'); return null; }
   if (!date) { alert('Please choose a date.'); return null; }
 
-  const messages = getFormMessages();
-  return { name, date, mode, messages, wallpaper: formWallpaperSelection };
+  return { name, date, mode, messages: getFormMessages(), wallpaper: formWallpaperSelection };
 }
 
 async function handleFormSubmit(event) {
@@ -916,13 +758,8 @@ async function handleFormSubmit(event) {
     savedId = newTimer.id;
   }
 
-  if (formPendingPhotoBlob && values.wallpaper === 'photo') {
-    await savePhoto(savedId, formPendingPhotoBlob);
-  }
-
-  if (values.wallpaper !== 'photo') {
-    await deletePhoto(savedId);
-  }
+  if (formPendingPhotoBlob && values.wallpaper === 'photo') await savePhoto(savedId, formPendingPhotoBlob);
+  if (values.wallpaper !== 'photo') await deletePhoto(savedId);
 
   saveState();
   renderTimerList();
@@ -946,25 +783,41 @@ async function deleteTimer() {
 /* ════════════════════════════════════════════════════
    10b. EXPORT & IMPORT
 
-   Export: serialise the timers array to a downloadable
-   JSON file. Photos are excluded to keep the file small.
+   WHY THE OLD EXPORT BROKE ON iOS:
+   The previous version used <a href="..." download> to
+   trigger a file download. This works on desktop browsers
+   but Safari on iOS simply ignores the download attribute
+   — it either opens the file in the browser or does nothing.
 
-   Import: read a JSON backup file, then ask the user
-   whether to replace all timers or merge (skipping any
-   timer whose ID already exists).
+   FIX: Use navigator.share() with a File object instead.
+   iOS 15+ supports sharing files this way, which opens the
+   native share sheet. The user can then tap "Save to Files"
+   to store the backup in iCloud Drive or on-device.
+
+   For desktop browsers that do not support navigator.share,
+   we fall back to the old <a download> method, which works
+   fine on Mac/Windows/Linux browsers.
 ════════════════════════════════════════════════════ */
 
 /**
- * Export all timer metadata to a downloadable JSON file.
- * Named milestone-backup-YYYY-MM-DD.json.
- * Photos are excluded (stored separately in IndexedDB).
+ * Export all timer metadata to a JSON backup file.
+ *
+ * On iOS: opens the native share sheet via navigator.share(),
+ * where the user can tap "Save to Files" to keep the backup.
+ *
+ * On desktop: triggers a direct file download via <a download>.
+ *
+ * Photos are excluded — they live in IndexedDB and would make
+ * the file very large. A timer that had a photo wallpaper will
+ * have its wallpaper reset to 'none' in the export.
  */
-function exportTimers() {
+async function exportTimers() {
   if (appState.timers.length === 0) {
     alert('No timers to export.');
     return;
   }
 
+  // Build the export payload — metadata only, no photo blobs
   const payload = {
     exportedAt: new Date().toISOString(),
     version:    1,
@@ -973,18 +826,35 @@ function exportTimers() {
       name:      t.name,
       date:      t.date,
       mode:      t.mode,
+      // Reset photo wallpapers to 'none' since the photo is not included
       wallpaper: t.wallpaper === 'photo' ? 'none' : (t.wallpaper || 'none'),
       messages:  t.messages || [],
     })),
   };
 
   const json     = JSON.stringify(payload, null, 2);
-  const blob     = new Blob([json], { type: 'application/json' });
-  const url      = URL.createObjectURL(blob);
-  const today    = new Date().toISOString().slice(0, 10);
+  const today    = new Date().toISOString().slice(0, 10); // "YYYY-MM-DD"
   const filename = `milestone-backup-${today}.json`;
 
-  const a = document.createElement('a');
+  // Try the Web Share API first (works on iOS Safari and modern Android)
+  if (navigator.canShare) {
+    const file = new File([json], filename, { type: 'application/json' });
+    if (navigator.canShare({ files: [file] })) {
+      try {
+        await navigator.share({ files: [file], title: 'Milestone Backup' });
+        return; // Done — share sheet handled it
+      } catch (err) {
+        if (err.name === 'AbortError') return; // User cancelled — do nothing
+        console.warn('[Milestone] Share-based export failed, trying download:', err);
+        // Fall through to the download fallback below
+      }
+    }
+  }
+
+  // Desktop fallback: trigger a file download via a temporary link
+  const blob = new Blob([json], { type: 'application/json' });
+  const url  = URL.createObjectURL(blob);
+  const a    = document.createElement('a');
   a.href     = url;
   a.download = filename;
   document.body.appendChild(a);
@@ -1001,15 +871,16 @@ function importTimers() {
 }
 
 /**
- * Handle the file chosen for import.
- * Validates the JSON, then asks: replace all or merge?
+ * Handle the backup file chosen for import.
+ * Validates the JSON then asks: replace all timers or merge?
+ * Merge skips any timer whose ID already exists — safe to re-import.
  * @param {Event} event
  */
 function handleImportFile(event) {
   const file = event.target.files && event.target.files[0];
   if (!file) return;
 
-  event.target.value = '';
+  event.target.value = ''; // reset so the same file can be re-chosen
 
   const reader = new FileReader();
   reader.onload = (e) => {
@@ -1028,11 +899,9 @@ function handleImportFile(event) {
     }
 
     const count = payload.timers.length;
-    if (count === 0) {
-      alert('The backup file contains no timers.');
-      return;
-    }
+    if (count === 0) { alert('The backup file contains no timers.'); return; }
 
+    // OK = replace all, Cancel = merge
     const replace = confirm(
       `Found ${count} timer${count !== 1 ? 's' : ''} in the backup.\n\n` +
       `OK     = Replace all current timers with the backup.\n` +
@@ -1110,14 +979,11 @@ function openPhotoEditor(dataUrl, savedTransform) {
 function computeMinScale() {
   const viewport = document.getElementById('photo-editor-viewport');
   const imgEl    = document.getElementById('photo-editor-img');
-
   const vw = viewport.clientWidth;
   const vh = viewport.clientHeight;
   const iw = imgEl.naturalWidth;
   const ih = imgEl.naturalHeight;
-
   if (!iw || !ih) return;
-
   editorState.minScale = Math.max(vw / iw, vh / ih);
 }
 
@@ -1130,15 +996,12 @@ function applyEditorTransform() {
 function constrainTransform() {
   const viewport = document.getElementById('photo-editor-viewport');
   const imgEl    = document.getElementById('photo-editor-img');
-
   const vw = viewport.clientWidth;
   const vh = viewport.clientHeight;
   const iw = imgEl.naturalWidth  * editorState.scale;
   const ih = imgEl.naturalHeight * editorState.scale;
-
   const maxX = Math.max(0, (iw - vw) / 2);
   const maxY = Math.max(0, (ih - vh) / 2);
-
   editorState.x = Math.max(-maxX, Math.min(maxX, editorState.x));
   editorState.y = Math.max(-maxY, Math.min(maxY, editorState.y));
 }
@@ -1161,40 +1024,26 @@ function updatePhotoPreviewThumbnail(dataUrl, transform) {
   const canvas  = document.createElement('canvas');
   const vw      = viewport.clientWidth  || 360;
   const vh      = viewport.clientHeight || 640;
-  const aspect  = vw / vh;
   canvas.width  = 360;
-  canvas.height = Math.round(360 / aspect);
+  canvas.height = Math.round(360 / (vw / vh));
   const ctx     = canvas.getContext('2d');
 
   const img = new Image();
   img.onload = () => {
-    const scale      = transform.scale;
-    const scaledW    = img.naturalWidth  * scale;
-    const scaledH    = img.naturalHeight * scale;
-    const dw         = canvas.width;
-    const dh         = canvas.height;
+    const scaledW    = img.naturalWidth  * transform.scale;
+    const scaledH    = img.naturalHeight * transform.scale;
     const imgCentreX = vw / 2 + transform.x;
     const imgCentreY = vh / 2 + transform.y;
     const imgLeft    = imgCentreX - scaledW / 2;
     const imgTop     = imgCentreY - scaledH / 2;
-
-    ctx.drawImage(
-      img,
-      imgLeft  * (dw / vw),
-      imgTop   * (dh / vh),
-      scaledW  * (dw / vw),
-      scaledH  * (dh / vh),
-    );
-
+    ctx.drawImage(img, imgLeft * (canvas.width / vw), imgTop * (canvas.height / vh), scaledW * (canvas.width / vw), scaledH * (canvas.height / vh));
     previewImg.src = canvas.toDataURL('image/jpeg', 0.85);
   };
   img.src = dataUrl;
 }
 
 function pointerDistance(p1, p2) {
-  const dx = p2.x - p1.x;
-  const dy = p2.y - p1.y;
-  return Math.sqrt(dx * dx + dy * dy);
+  return Math.sqrt((p2.x - p1.x) ** 2 + (p2.y - p1.y) ** 2);
 }
 
 function onEditorPointerDown(e) {
@@ -1221,8 +1070,8 @@ function onEditorPointerMove(e) {
   const count = Object.keys(editorState.pointers).length;
 
   if (count === 1 && editorState.isDragging) {
-    editorState.x += e.clientX - editorState.lastX;
-    editorState.y += e.clientY - editorState.lastY;
+    editorState.x    += e.clientX - editorState.lastX;
+    editorState.y    += e.clientY - editorState.lastY;
     editorState.lastX = e.clientX;
     editorState.lastY = e.clientY;
     constrainTransform();
@@ -1231,10 +1080,9 @@ function onEditorPointerMove(e) {
   } else if (count === 2) {
     const dist = pointerDistance(...Object.values(editorState.pointers));
     if (editorState.lastPinchDist !== null) {
-      const ratio = dist / editorState.lastPinchDist;
       editorState.scale = Math.max(
         editorState.minScale,
-        Math.min(editorState.scale * ratio, editorState.minScale * 8)
+        Math.min(editorState.scale * (dist / editorState.lastPinchDist), editorState.minScale * 8)
       );
       constrainTransform();
       applyEditorTransform();
@@ -1250,7 +1098,7 @@ function onEditorPointerUp(e) {
     editorState.isDragging    = false;
     editorState.lastPinchDist = null;
   } else if (Object.keys(editorState.pointers).length === 1) {
-    const remaining = Object.values(editorState.pointers)[0];
+    const remaining       = Object.values(editorState.pointers)[0];
     editorState.isDragging    = true;
     editorState.lastX         = remaining.x;
     editorState.lastY         = remaining.y;
@@ -1274,15 +1122,12 @@ function getActiveMessage(timer, totalDays) {
   let bestDaysUntil = Infinity;
 
   for (const msg of messages) {
-    if (!msg.text) continue;
+    if (!msg.text || msg.triggerType !== 'date' || !msg.triggerDate) continue;
 
-    if (msg.triggerType !== 'date' || !msg.triggerDate) continue;
-
-    const triggerDay  = new Date(msg.triggerDate + 'T00:00:00');
-    const daysUntil   = Math.round((triggerDay - today) / (1000 * 60 * 60 * 24));
+    const triggerDay   = new Date(msg.triggerDate + 'T00:00:00');
+    const daysUntil    = Math.round((triggerDay - today) / (1000 * 60 * 60 * 24));
     const triggerLabel = `\uD83D\uDCC5 ${formatDate(msg.triggerDate)}`;
 
-    // Show message on or after the trigger date
     if (daysUntil <= 0 && daysUntil < bestDaysUntil) {
       bestDaysUntil = daysUntil;
       best = { text: msg.text, daysUntil, triggerLabel };
@@ -1331,8 +1176,8 @@ function toggleTheme() {
 
 function blobToDataUrl(blob) {
   return new Promise((resolve, reject) => {
-    const reader  = new FileReader();
-    reader.onload = () => resolve(reader.result);
+    const reader   = new FileReader();
+    reader.onload  = () => resolve(reader.result);
     reader.onerror = reject;
     reader.readAsDataURL(blob);
   });
@@ -1440,18 +1285,10 @@ document.addEventListener('DOMContentLoaded', () => {
   // -- Photo editor --
   document.getElementById('btn-wp-adjust-photo').addEventListener('click', async () => {
     let dataUrl = editorState.dataUrl;
+    if (!dataUrl && editingTimerId)    dataUrl = await loadPhoto(editingTimerId);
+    if (!dataUrl && formPendingPhotoBlob) dataUrl = await blobToDataUrl(formPendingPhotoBlob);
 
-    if (!dataUrl && editingTimerId) {
-      dataUrl = await loadPhoto(editingTimerId);
-    }
-    if (!dataUrl && formPendingPhotoBlob) {
-      dataUrl = await blobToDataUrl(formPendingPhotoBlob);
-    }
-
-    if (!dataUrl) {
-      alert('No photo found. Please choose a photo first.');
-      return;
-    }
+    if (!dataUrl) { alert('No photo found. Please choose a photo first.'); return; }
 
     editorState.dataUrl = dataUrl;
     openPhotoEditor(dataUrl, formPendingPhotoTransform);
@@ -1483,9 +1320,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
   // -- Milestone overlay --
   document.getElementById('milestone-overlay').addEventListener('click', (e) => {
-    if (e.target.id === 'btn-close-milestone' || e.target.closest('#btn-close-milestone')) {
-      closeMilestoneOverlay();
-    }
+    if (e.target.id === 'btn-close-milestone' || e.target.closest('#btn-close-milestone')) closeMilestoneOverlay();
     if (e.target === document.getElementById('milestone-overlay')) closeMilestoneOverlay();
   });
 
